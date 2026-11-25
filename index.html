@@ -1,0 +1,3035 @@
+<!DOCTYPE html>
+<html lang="id" class="dark">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Daily Project Monitoring — Arsitek Paritama</title>
+  <!-- Google Fonts: Inter -->
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
+  <!-- Tailwind CSS -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      darkMode: 'class',
+      theme: {
+        extend: {
+          fontFamily: {
+            sans: ['Inter', '-apple-system', 'BlinkMacSystemFont', 'Segoe UI', 'Roboto', 'sans-serif'],
+          },
+          colors: {
+            notion: {
+              bg: '#191919',
+              surface: '#202020',
+              hover: '#262626',
+              active: '#2c2c2c',
+              border: '#2f2f2f',
+              borderLight: '#3a3a3a',
+              text: '#e6e6e6',
+              muted: '#9b9a97',
+              blue: '#2383e2',
+              blueHover: '#1b6ec2',
+            }
+          }
+        }
+      }
+    };
+  </script>
+  <style>
+    /* Notion-inspired custom scrollbars & subtle UI utilities */
+    :root {
+      --bg-page: #191919;
+      --bg-surface: #202020;
+      --bg-hover: #252525;
+      --border-subtle: #2f2f2f;
+      --text-primary: #e6e6e6;
+      --text-muted: #9b9a97;
+    }
+
+    html:not(.dark) {
+      --bg-page: #ffffff;
+      --bg-surface: #fbfbfa;
+      --bg-hover: #f3f3f1;
+      --border-subtle: #e9e9e7;
+      --text-primary: #37352f;
+      --text-muted: #787774;
+    }
+
+    body {
+      font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+      background-color: var(--bg-page);
+      color: var(--text-primary);
+      transition: background-color 0.18s ease, color 0.18s ease;
+      -webkit-font-smoothing: antialiased;
+    }
+
+    /* Custom subtle scrollbar */
+    ::-webkit-scrollbar {
+      width: 7px;
+      height: 7px;
+    }
+    ::-webkit-scrollbar-track {
+      background: transparent;
+    }
+    ::-webkit-scrollbar-thumb {
+      background: rgba(155, 154, 151, 0.25);
+      border-radius: 9999px;
+    }
+    ::-webkit-scrollbar-thumb:hover {
+      background: rgba(155, 154, 151, 0.45);
+    }
+
+    /* Notion Table Cell & Hover OPEN button behavior */
+    .notion-row:hover .row-open-btn {
+      opacity: 1;
+      pointer-events: auto;
+    }
+    .row-open-btn {
+      opacity: 0;
+      pointer-events: none;
+      transition: opacity 0.12s ease, background-color 0.12s ease;
+    }
+    @media (max-width: 768px) {
+      .row-open-btn {
+        opacity: 1;
+        pointer-events: auto;
+      }
+    }
+
+    /* Drawer slide animation */
+    .drawer-enter {
+      transform: translateX(0%);
+    }
+    .drawer-exit {
+      transform: translateX(100%);
+    }
+
+    /* Smooth popover fade */
+    @keyframes popIn {
+      from {
+        opacity: 0;
+        transform: translateY(-4px) scale(0.98);
+      }
+      to {
+        opacity: 1;
+        transform: translateY(0) scale(1);
+      }
+    }
+    .animate-pop {
+      animation: popIn 0.12s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+    }
+  </style>
+</head>
+<body class="min-h-screen flex flex-col selection:bg-[#2383e2]/30">
+
+  <!-- Top Notion Breadcrumb & Utility Bar -->
+  <header class="sticky top-0 z-30 h-11 px-3 sm:px-5 flex items-center justify-between border-b border-[#e9e9e7] dark:border-[#2f2f2f] bg-white/90 dark:bg-[#191919]/90 backdrop-blur-md text-xs">
+    <!-- Left Breadcrumb -->
+    <div class="flex items-center gap-1.5 min-w-0">
+      <div class="w-5 h-5 rounded flex items-center justify-center bg-[#2383e2]/15 text-[#2383e2] font-semibold shrink-0">
+        A
+      </div>
+      <span class="truncate text-[#787774] dark:text-[#9b9a97] hidden sm:inline">Faiq Akbar's space</span>
+      <span class="text-[#787774] dark:text-[#5a5a5a] hidden sm:inline">/</span>
+      <button onclick="setWorkspaceMode('active')" class="truncate font-medium text-[#37352f] dark:text-[#e6e6e6] hover:bg-black/5 dark:hover:bg-white/5 px-1.5 py-1 rounded transition">
+        Daily Project Monitoring
+      </button>
+      <span id="breadcrumb-done-badge" class="hidden items-center gap-1 text-[#787774] dark:text-[#9b9a97]">
+        <span>/</span>
+        <span class="text-emerald-400 font-medium">Project Done</span>
+      </span>
+    </div>
+
+    <!-- Right Header Controls -->
+    <div class="flex items-center gap-1.5 sm:gap-2.5 shrink-0">
+      <!-- Live Sync Status Pill -->
+      <div id="sync-status-pill" class="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full text-[11px] font-medium bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20">
+        <span id="sync-dot" class="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse"></span>
+        <span id="sync-status">Connecting...</span>
+      </div>
+
+      <!-- Dynamic Collaborator Avatar Stack (from team_members) -->
+      <button
+        id="header-avatar-stack"
+        onclick="openMembersModal()"
+        class="hidden md:flex items-center -space-x-1.5 mr-0.5 hover:opacity-90 transition cursor-pointer"
+        title="Lihat & kelola anggota tim Arsitek Paritama"
+      >
+        <span class="w-5 h-5 rounded-full bg-amber-600 text-white text-[10px] font-semibold flex items-center justify-center ring-1 ring-[#191919]">F</span>
+        <span class="w-5 h-5 rounded-full bg-emerald-600 text-white text-[10px] font-semibold flex items-center justify-center ring-1 ring-[#191919]">G</span>
+        <span class="w-5 h-5 rounded-full bg-sky-600 text-white text-[10px] font-semibold flex items-center justify-center ring-1 ring-[#191919]">H</span>
+      </button>
+
+      <!-- Prominent + Kelola Member Button -->
+      <button
+        onclick="openMembersModal()"
+        class="px-2.5 py-1 rounded-[5px] bg-[#2383e2] hover:bg-[#1b6ec2] text-white font-medium text-xs inline-flex items-center gap-1 shadow-xs transition"
+        title="Tambah, edit, atau hapus member tim"
+      >
+        <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" stroke-width="2.2" viewBox="0 0 24 24">
+          <path d="M16 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path>
+          <circle cx="8.5" cy="7" r="4"></circle>
+          <line x1="20" y1="8" x2="20" y2="14"></line>
+          <line x1="17" y1="11" x2="23" y2="11"></line>
+        </svg>
+        <span>+ Kelola Member</span>
+      </button>
+
+      <!-- User Auth Profile Pill -->
+      <button
+        id="auth-profile-btn"
+        onclick="openAuthModal()"
+        class="px-2 py-1 rounded hover:bg-black/5 dark:hover:bg-white/10 text-[#37352f] dark:text-[#e6e6e6] border border-[#e9e9e7] dark:border-[#2f2f2f] inline-flex items-center gap-1.5 transition"
+        title="Akun & Kolaborasi Real-time"
+      >
+        <span id="auth-user-avatar" class="w-4 h-4 rounded-full bg-[#2383e2] text-white text-[9px] font-bold flex items-center justify-center">G</span>
+        <span id="auth-user-label" class="hidden lg:inline max-w-[110px] truncate text-[11px]">Quick Access</span>
+      </button>
+
+      <!-- Theme Toggle -->
+      <button id="theme-toggle-btn" onclick="toggleTheme()" class="p-1.5 rounded hover:bg-black/5 dark:hover:bg-white/10 text-[#37352f] dark:text-[#e6e6e6] transition" title="Toggle Dark / Light Mode">
+        <!-- Sun Icon (shown in dark mode) -->
+        <svg id="icon-sun" class="w-4 h-4 hidden dark:block" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24">
+          <circle cx="12" cy="12" r="4"></circle>
+          <path d="M12 2v2m0 16v2M4.93 4.93l1.41 1.41m11.32 11.32l1.41 1.41M2 12h2m16 0h2M6.34 17.66l-1.41 1.41M19.07 4.93l-1.41 1.41"></path>
+        </svg>
+        <!-- Moon Icon (shown in light mode) -->
+        <svg id="icon-moon" class="w-4 h-4 block dark:hidden" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24">
+          <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"></path>
+        </svg>
+      </button>
+
+      <!-- Export CSV -->
+      <button onclick="exportCSV()" class="px-2 py-1 rounded hover:bg-black/5 dark:hover:bg-white/10 text-[#37352f] dark:text-[#e6e6e6] font-medium transition flex items-center gap-1" title="Export semua data ke CSV">
+        <svg class="w-3.5 h-3.5 text-[#787774] dark:text-[#9b9a97]" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24">
+          <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4M7 10l5 5 5-5M12 15V3"></path>
+        </svg>
+        <span class="hidden sm:inline">Export CSV</span>
+      </button>
+
+      <!-- Reset Sample Data -->
+      <button onclick="openResetModal()" class="px-2 py-1 rounded hover:bg-red-500/10 text-[#787774] dark:text-[#9b9a97] hover:text-red-400 transition" title="Reset ke data awal">
+        Reset
+      </button>
+    </div>
+  </header>
+
+  <!-- Main Workspace Container -->
+  <main class="flex-1 w-full max-w-[1380px] mx-auto px-4 sm:px-8 lg:px-14 pt-8 pb-24">
+
+    <!-- Page Title & Subtitle (Matching Notion Screenshot) -->
+    <section class="mb-6">
+      <div class="flex flex-wrap items-start justify-between gap-4">
+        <div>
+          <h1 class="text-2xl sm:text-[32px] font-bold tracking-tight text-[#37352f] dark:text-[#e6e6e6] leading-tight">
+            Daily Project Monitoring
+          </h1>
+          <p class="mt-2 text-base sm:text-[17px] italic font-medium text-[#37352f]/90 dark:text-[#e6e6e6]/90">
+            Monitoring Progress Arsitek Paritama
+          </p>
+        </div>
+
+        <!-- Reference Date Indicator -->
+        <div class="inline-flex items-center gap-2 px-2.5 py-1 rounded-md text-xs bg-[#fbfbfa] dark:bg-[#202020] border border-[#e9e9e7] dark:border-[#2f2f2f] text-[#787774] dark:text-[#9b9a97]">
+          <span class="w-2 h-2 rounded-full bg-[#2383e2]"></span>
+          <span>Today: <strong class="text-[#37352f] dark:text-[#e6e6e6] font-medium">Wed, Nov 25, 2026</strong></span>
+        </div>
+      </div>
+
+      <!-- Quick Action Links (Matching Notion underlined links) -->
+      <div class="mt-3.5 flex flex-wrap items-center gap-x-5 gap-y-2 text-[14px]">
+        <button onclick="openDriveModal()" class="group inline-flex items-center gap-1.5 text-[#37352f] dark:text-[#e6e6e6] hover:text-[#2383e2] dark:hover:text-[#529cca] transition">
+          <svg class="w-4 h-4 text-[#787774] dark:text-[#9b9a97] group-hover:text-[#2383e2]" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24">
+            <path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"></path>
+            <path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"></path>
+          </svg>
+          <span class="underline decoration-[#787774]/60 dark:decoration-[#9b9a97]/60 underline-offset-4">Link Drive Arsitek</span>
+        </button>
+
+        <button id="toggle-done-view-btn" onclick="toggleWorkspaceMode()" class="group inline-flex items-center gap-1.5 text-[#37352f] dark:text-[#e6e6e6] hover:text-emerald-500 dark:hover:text-emerald-400 transition">
+          <svg class="w-4 h-4 text-[#787774] dark:text-[#9b9a97] group-hover:text-emerald-400" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24">
+            <path d="M9 11l3 3L22 4"></path>
+            <path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"></path>
+          </svg>
+          <span id="done-link-label" class="underline decoration-[#787774]/60 dark:decoration-[#9b9a97]/60 underline-offset-4">Project Done</span>
+          <span id="done-count-pill" class="px-1.5 py-0.2 rounded-full text-[11px] font-medium bg-emerald-500/15 text-emerald-600 dark:text-emerald-400">0</span>
+        </button>
+      </div>
+    </section>
+
+    <!-- Compact Summary Metrics Strip (Clickable Filters) -->
+    <section id="metrics-strip" class="grid grid-cols-2 lg:grid-cols-4 gap-2.5 mb-5">
+      <!-- Total Active -->
+      <button onclick="applyMetricFilter('all')" id="metric-card-all" class="metric-card text-left p-3 rounded-lg bg-[#fbfbfa] dark:bg-[#202020] border border-[#e9e9e7] dark:border-[#2f2f2f] hover:border-[#2383e2]/60 transition flex items-center justify-between">
+        <div>
+          <div class="text-[11px] uppercase tracking-wider font-medium text-[#787774] dark:text-[#9b9a97]">Total Active Projects</div>
+          <div id="metric-total" class="text-xl font-bold mt-0.5 text-[#37352f] dark:text-[#e6e6e6]">0</div>
+        </div>
+        <div class="w-8 h-8 rounded-md bg-black/5 dark:bg-white/5 flex items-center justify-center text-[#787774] dark:text-[#9b9a97]">
+          <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24">
+            <rect x="3" y="3" width="7" height="7" rx="1"></rect>
+            <rect x="14" y="3" width="7" height="7" rx="1"></rect>
+            <rect x="14" y="14" width="7" height="7" rx="1"></rect>
+            <rect x="3" y="14" width="7" height="7" rx="1"></rect>
+          </svg>
+        </div>
+      </button>
+
+      <!-- In Progress -->
+      <button onclick="applyMetricFilter('In progress')" id="metric-card-progress" class="metric-card text-left p-3 rounded-lg bg-[#fbfbfa] dark:bg-[#202020] border border-[#e9e9e7] dark:border-[#2f2f2f] hover:border-[#529cca]/60 transition flex items-center justify-between">
+        <div>
+          <div class="text-[11px] uppercase tracking-wider font-medium text-[#787774] dark:text-[#9b9a97]">In Progress</div>
+          <div id="metric-progress" class="text-xl font-bold mt-0.5 text-[#2383e2] dark:text-[#529cca]">0</div>
+        </div>
+        <div class="w-8 h-8 rounded-md bg-[#1d3b58]/30 flex items-center justify-center text-[#529cca]">
+          <span class="w-2.5 h-2.5 rounded-full bg-[#529cca]"></span>
+        </div>
+      </button>
+
+      <!-- Urgent / Due <= Nov 25, 2026 -->
+      <button onclick="applyMetricFilter('overdue')" id="metric-card-overdue" class="metric-card text-left p-3 rounded-lg bg-[#fbfbfa] dark:bg-[#202020] border border-[#e9e9e7] dark:border-[#2f2f2f] hover:border-amber-500/60 transition flex items-center justify-between">
+        <div>
+          <div class="text-[11px] uppercase tracking-wider font-medium text-[#787774] dark:text-[#9b9a97]">Urgent / Due ≤ Nov 25</div>
+          <div id="metric-overdue" class="text-xl font-bold mt-0.5 text-amber-500 dark:text-amber-400">0</div>
+        </div>
+        <div class="w-8 h-8 rounded-md bg-amber-500/15 flex items-center justify-center text-amber-400">
+          <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+            <circle cx="12" cy="12" r="10"></circle>
+            <line x1="12" y1="8" x2="12" y2="12"></line>
+            <line x1="12" y1="16" x2="12.01" y2="16"></line>
+          </svg>
+        </div>
+      </button>
+
+      <!-- Completed Projects -->
+      <button onclick="setWorkspaceMode('done')" id="metric-card-done" class="metric-card text-left p-3 rounded-lg bg-[#fbfbfa] dark:bg-[#202020] border border-[#e9e9e7] dark:border-[#2f2f2f] hover:border-emerald-500/60 transition flex items-center justify-between">
+        <div>
+          <div class="text-[11px] uppercase tracking-wider font-medium text-[#787774] dark:text-[#9b9a97]">Completed Projects</div>
+          <div id="metric-done" class="text-xl font-bold mt-0.5 text-emerald-600 dark:text-emerald-400">0</div>
+        </div>
+        <div class="w-8 h-8 rounded-md bg-emerald-500/15 flex items-center justify-center text-emerald-400">
+          <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+            <path d="M20 6L9 17l-5-5"></path>
+          </svg>
+        </div>
+      </button>
+    </section>
+
+    <!-- Global Filter & View Control Toolbar -->
+    <section id="global-toolbar" class="mb-7 p-2.5 rounded-lg bg-[#fbfbfa] dark:bg-[#202020] border border-[#e9e9e7] dark:border-[#2f2f2f] flex flex-wrap items-center justify-between gap-2.5">
+      <div class="flex flex-wrap items-center gap-2 flex-1 min-w-[240px]">
+        <!-- Search Input -->
+        <div class="relative flex-1 min-w-[190px] max-w-xs">
+          <svg class="w-3.5 h-3.5 absolute left-2.5 top-1/2 -translate-y-1/2 text-[#787774] dark:text-[#9b9a97]" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+            <circle cx="11" cy="11" r="8"></circle>
+            <path d="m21 21-4.3-4.3"></path>
+          </svg>
+          <input
+            id="global-search"
+            type="text"
+            placeholder="Search project or note..."
+            oninput="handleFilterChange()"
+            class="w-full pl-8 pr-7 py-1.5 text-xs rounded-md bg-white dark:bg-[#191919] border border-[#e9e9e7] dark:border-[#2f2f2f] text-[#37352f] dark:text-[#e6e6e6] placeholder-[#787774] dark:placeholder-[#9b9a97] focus:outline-none focus:border-[#2383e2]"
+          />
+          <button id="clear-search-btn" onclick="clearSearch()" class="hidden absolute right-2 top-1/2 -translate-y-1/2 text-[#9b9a97] hover:text-white text-xs">✕</button>
+        </div>
+
+        <!-- Division / Role Filter -->
+        <select
+          id="filter-role"
+          onchange="handleFilterChange()"
+          class="px-2.5 py-1.5 text-xs rounded-md bg-white dark:bg-[#191919] border border-[#e9e9e7] dark:border-[#2f2f2f] text-[#37352f] dark:text-[#e6e6e6] focus:outline-none focus:border-[#2383e2]"
+        >
+          <option value="ALL">All Divisions / Roles</option>
+          <option value="Architect">Architect</option>
+          <option value="Estimator">Estimator</option>
+          <option value="Marketing">Marketing</option>
+        </select>
+
+        <!-- Team Member Filter -->
+        <select
+          id="filter-member"
+          onchange="handleFilterChange()"
+          class="px-2.5 py-1.5 text-xs rounded-md bg-white dark:bg-[#191919] border border-[#e9e9e7] dark:border-[#2f2f2f] text-[#37352f] dark:text-[#e6e6e6] focus:outline-none focus:border-[#2383e2]"
+        >
+          <option value="ALL">All Team Members</option>
+        </select>
+
+        <!-- Status Filter -->
+        <select
+          id="filter-status"
+          onchange="handleFilterChange()"
+          class="px-2.5 py-1.5 text-xs rounded-md bg-white dark:bg-[#191919] border border-[#e9e9e7] dark:border-[#2f2f2f] text-[#37352f] dark:text-[#e6e6e6] focus:outline-none focus:border-[#2383e2]"
+        >
+          <option value="ALL">All Statuses</option>
+          <option value="In progress">In progress</option>
+          <option value="Not started">Not started</option>
+          <option value="Revision">Revision</option>
+          <option value="Done">Done</option>
+        </select>
+
+        <!-- Active Filter Reset Pill -->
+        <button id="clear-all-filters-btn" onclick="resetFilters()" class="hidden px-2 py-1 text-[11px] rounded bg-[#2383e2]/15 text-[#2383e2] dark:text-[#529cca] hover:bg-[#2383e2]/25 font-medium transition">
+          Clear filters ✕
+        </button>
+      </div>
+
+      <!-- Global View Switcher (Table vs Board) -->
+      <div class="flex items-center gap-1 bg-white dark:bg-[#191919] p-0.5 rounded-md border border-[#e9e9e7] dark:border-[#2f2f2f] text-xs">
+        <button id="global-view-table" onclick="setGlobalView('table')" class="px-2.5 py-1 rounded font-medium flex items-center gap-1.5 transition bg-[#2383e2] text-white">
+          <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+            <rect x="3" y="3" width="18" height="18" rx="2"></rect>
+            <path d="M3 9h18M3 15h18M9 9v12"></path>
+          </svg>
+          <span>Table View</span>
+        </button>
+        <button id="global-view-board" onclick="setGlobalView('board')" class="px-2.5 py-1 rounded font-medium flex items-center gap-1.5 transition text-[#787774] dark:text-[#9b9a97] hover:text-[#37352f] dark:hover:text-[#e6e6e6]">
+          <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+            <rect x="3" y="3" width="5" height="18" rx="1"></rect>
+            <rect x="10" y="3" width="5" height="12" rx="1"></rect>
+            <rect x="17" y="3" width="5" height="15" rx="1"></rect>
+          </svg>
+          <span>Kanban Board</span>
+        </button>
+      </div>
+    </section>
+
+    <!-- Active Workspace: All 6 Database Sections Container -->
+    <div id="sections-container" class="space-y-10"></div>
+
+    <!-- Project Done Archive View (Hidden by default) -->
+    <div id="done-archive-container" class="hidden space-y-5"></div>
+
+  </main>
+
+  <!-- Floating Dynamic Popover (for Status, Person, Date inline editing) -->
+  <div id="floating-popover" class="hidden fixed z-50 w-64 rounded-lg shadow-2xl border border-[#e9e9e7] dark:border-[#383838] bg-white dark:bg-[#252525] text-[#37352f] dark:text-[#e6e6e6] animate-pop overflow-hidden"></div>
+
+  <!-- Notion-Style Right Slide-Over Detail Drawer (OPEN) -->
+  <div id="drawer-backdrop" onclick="closeDrawer()" class="hidden fixed inset-0 z-40 bg-black/50 backdrop-blur-[1px] transition-opacity"></div>
+  <aside id="project-drawer" class="fixed top-0 right-0 z-50 h-full w-full max-w-xl bg-white dark:bg-[#202020] border-l border-[#e9e9e7] dark:border-[#2f2f2f] shadow-2xl drawer-exit transition-transform duration-200 ease-out flex flex-col">
+    <!-- Drawer Top Header -->
+    <div class="h-12 px-4 sm:px-6 border-b border-[#e9e9e7] dark:border-[#2f2f2f] flex items-center justify-between shrink-0">
+      <div class="flex items-center gap-2 text-xs text-[#787774] dark:text-[#9b9a97] min-w-0">
+        <button onclick="closeDrawer()" class="p-1 rounded hover:bg-black/5 dark:hover:bg-white/10 text-[#37352f] dark:text-[#e6e6e6]" title="Close (Esc)">
+          <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+            <path d="M13 17l5-5-5-5M6 17l5-5-5-5"></path>
+          </svg>
+        </button>
+        <span class="truncate" id="drawer-breadcrumb">Drawing Process</span>
+      </div>
+
+      <div class="flex items-center gap-2">
+        <!-- Delete Project Button (2-step confirmation) -->
+        <button id="drawer-delete-btn" onclick="handleDrawerDeleteClick()" class="px-2.5 py-1 rounded text-xs font-medium text-red-500 dark:text-red-400 hover:bg-red-500/10 transition">
+          Delete
+        </button>
+        <button onclick="closeDrawer()" class="px-2.5 py-1 rounded text-xs font-medium bg-black/5 dark:bg-white/10 hover:bg-black/10 dark:hover:bg-white/15 text-[#37352f] dark:text-[#e6e6e6] transition">
+          Done
+        </button>
+      </div>
+    </div>
+
+    <!-- Drawer Scrollable Body -->
+    <div id="drawer-body" class="flex-1 overflow-y-auto px-5 sm:px-8 py-6 space-y-6">
+      <!-- Populated dynamically via JS -->
+    </div>
+  </aside>
+
+  <!-- Link Drive Arsitek Modal -->
+  <div id="drive-modal" class="hidden fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-[1px]">
+    <div class="w-full max-w-md rounded-xl bg-white dark:bg-[#202020] border border-[#e9e9e7] dark:border-[#2f2f2f] shadow-2xl p-5 animate-pop">
+      <div class="flex items-center justify-between mb-3">
+        <div class="flex items-center gap-2">
+          <div class="w-7 h-7 rounded-md bg-[#2383e2]/15 text-[#2383e2] flex items-center justify-center">
+            <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+              <path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"></path>
+            </svg>
+          </div>
+          <h3 class="font-semibold text-sm text-[#37352f] dark:text-[#e6e6e6]">Link Drive Arsitek Paritama</h3>
+        </div>
+        <button onclick="closeDriveModal()" class="text-[#9b9a97] hover:text-white text-sm px-1.5">✕</button>
+      </div>
+
+      <p class="text-xs text-[#787774] dark:text-[#9b9a97] mb-3">
+        Simpan tautan folder Google Drive tim Arsitek & Estimator agar mudah diakses langsung dari dashboard ini.
+      </p>
+
+      <div class="space-y-3">
+        <div>
+          <label class="block text-[11px] font-medium text-[#787774] dark:text-[#9b9a97] mb-1">Google Drive Folder URL</label>
+          <input
+            id="drive-url-input"
+            type="url"
+            placeholder="https://drive.google.com/drive/folders/..."
+            class="w-full px-3 py-2 text-xs rounded-md bg-[#fbfbfa] dark:bg-[#191919] border border-[#e9e9e7] dark:border-[#2f2f2f] text-[#37352f] dark:text-[#e6e6e6] focus:outline-none focus:border-[#2383e2]"
+          />
+        </div>
+
+        <div class="flex items-center justify-between pt-2 gap-2">
+          <a
+            id="drive-open-external"
+            href="https://drive.google.com"
+            target="_blank"
+            rel="noopener noreferrer"
+            class="px-3 py-1.5 rounded-md text-xs font-medium bg-[#2383e2] hover:bg-[#1b6ec2] text-white inline-flex items-center gap-1.5 transition"
+          >
+            <span>Open Google Drive</span>
+            <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+              <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6M15 3h6v6M10 14L21 3"></path>
+            </svg>
+          </a>
+
+          <div class="flex items-center gap-2">
+            <button onclick="closeDriveModal()" class="px-3 py-1.5 rounded-md text-xs text-[#787774] dark:text-[#9b9a97] hover:bg-black/5 dark:hover:bg-white/5">
+              Cancel
+            </button>
+            <button onclick="saveDriveUrl()" class="px-3 py-1.5 rounded-md text-xs font-medium bg-black/10 dark:bg-white/10 hover:bg-black/15 dark:hover:bg-white/15 text-[#37352f] dark:text-[#e6e6e6]">
+              Save Link
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Reset Confirmation Modal (No native confirm()) -->
+  <div id="reset-modal" class="hidden fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-[1px]">
+    <div class="w-full max-w-sm rounded-xl bg-white dark:bg-[#202020] border border-[#e9e9e7] dark:border-[#2f2f2f] shadow-2xl p-5 animate-pop">
+      <h3 class="font-semibold text-sm text-[#37352f] dark:text-[#e6e6e6] mb-1.5">Reset Sample Data?</h3>
+      <p class="text-xs text-[#787774] dark:text-[#9b9a97] mb-4 leading-relaxed">
+        Data proyek dan daftar member awal Arsitek Paritama akan dipulihkan kembali ke database real-time.
+      </p>
+      <div class="flex justify-end gap-2">
+        <button onclick="closeResetModal()" class="px-3 py-1.5 rounded-md text-xs text-[#787774] dark:text-[#9b9a97] hover:bg-black/5 dark:hover:bg-white/5">
+          Batal
+        </button>
+        <button onclick="confirmResetData()" class="px-3 py-1.5 rounded-md text-xs font-medium bg-red-600 hover:bg-red-700 text-white">
+          Ya, Reset Data
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- + Kelola Member (Team Member Management) Modal -->
+  <div id="members-modal" class="hidden fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-black/65 backdrop-blur-[1px]">
+    <div class="w-full max-w-2xl max-h-[90vh] rounded-xl bg-white dark:bg-[#202020] border border-[#e9e9e7] dark:border-[#2f2f2f] shadow-2xl flex flex-col overflow-hidden animate-pop">
+      <!-- Modal Header -->
+      <div class="px-5 py-3.5 border-b border-[#e9e9e7] dark:border-[#2f2f2f] flex items-center justify-between shrink-0">
+        <div class="flex items-center gap-2.5">
+          <div class="w-7 h-7 rounded-md bg-[#2383e2]/15 text-[#2383e2] flex items-center justify-center">
+            <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+              <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path>
+              <circle cx="9" cy="7" r="4"></circle>
+              <path d="M23 21v-2a4 4 0 0 0-3-3.87"></path>
+              <path d="M16 3.13a4 4 0 0 1 0 7.75"></path>
+            </svg>
+          </div>
+          <div>
+            <h3 class="font-semibold text-sm text-[#37352f] dark:text-[#e6e6e6]">Kelola Member Tim — Arsitek Paritama</h3>
+            <p class="text-[11px] text-[#787774] dark:text-[#9b9a97]">Tersinkronisasi real-time untuk seluruh penugasan proyek</p>
+          </div>
+        </div>
+        <button onclick="closeMembersModal()" class="p-1.5 rounded hover:bg-black/5 dark:hover:bg-white/10 text-[#787774] dark:text-[#9b9a97] text-xs">✕</button>
+      </div>
+
+      <!-- Modal Scrollable Body -->
+      <div class="flex-1 overflow-y-auto p-5 space-y-5">
+        <!-- Add / Edit Member Form Card -->
+        <form id="member-form" onsubmit="handleMemberFormSubmit(event)" class="p-4 rounded-lg bg-[#fbfbfa] dark:bg-[#191919] border border-[#e9e9e7] dark:border-[#2f2f2f] space-y-3">
+          <div class="flex items-center justify-between">
+            <span id="member-form-title" class="text-xs font-semibold text-[#37352f] dark:text-[#e6e6e6]">+ Tambah Member Baru</span>
+            <button type="button" id="member-form-cancel-edit" onclick="resetMemberForm()" class="hidden text-[11px] text-[#787774] dark:text-[#9b9a97] hover:text-[#2383e2]">
+              Batal Edit
+            </button>
+          </div>
+
+          <input type="hidden" id="member-edit-id" value="" />
+
+          <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            <div>
+              <label class="block text-[11px] font-medium text-[#787774] dark:text-[#9b9a97] mb-1">Nama Lengkap *</label>
+              <input
+                id="member-name-input"
+                type="text"
+                required
+                oninput="updateMemberFormPreview()"
+                placeholder="Contoh: Rizky Pratama"
+                class="w-full px-2.5 py-1.5 text-xs rounded-md bg-white dark:bg-[#202020] border border-[#e9e9e7] dark:border-[#2f2f2f] text-[#37352f] dark:text-[#e6e6e6] focus:outline-none focus:border-[#2383e2]"
+              />
+            </div>
+
+            <div>
+              <label class="block text-[11px] font-medium text-[#787774] dark:text-[#9b9a97] mb-1">Divisi / Role *</label>
+              <select
+                id="member-role-input"
+                onchange="updateMemberFormPreview()"
+                class="w-full px-2.5 py-1.5 text-xs rounded-md bg-white dark:bg-[#202020] border border-[#e9e9e7] dark:border-[#2f2f2f] text-[#37352f] dark:text-[#e6e6e6] focus:outline-none focus:border-[#2383e2]"
+              >
+                <option value="Architect">Architect</option>
+                <option value="Estimator">Estimator</option>
+                <option value="Marketing">Marketing</option>
+              </select>
+            </div>
+          </div>
+
+          <div class="grid grid-cols-1 sm:grid-cols-2 gap-3 items-end">
+            <div>
+              <label class="block text-[11px] font-medium text-[#787774] dark:text-[#9b9a97] mb-1.5">Warna Badge Avatar</label>
+              <div id="member-color-swatches" class="flex flex-wrap items-center gap-1.5"></div>
+            </div>
+
+            <div>
+              <label class="block text-[11px] font-medium text-[#787774] dark:text-[#9b9a97] mb-1">Email / No. HP (Opsional)</label>
+              <input
+                id="member-contact-input"
+                type="text"
+                placeholder="Contoh: rizky@paritama.id / 0812..."
+                class="w-full px-2.5 py-1.5 text-xs rounded-md bg-white dark:bg-[#202020] border border-[#e9e9e7] dark:border-[#2f2f2f] text-[#37352f] dark:text-[#e6e6e6] focus:outline-none focus:border-[#2383e2]"
+              />
+            </div>
+          </div>
+
+          <div class="pt-2 flex flex-wrap items-center justify-between gap-2 border-t border-[#e9e9e7] dark:border-[#2f2f2f]">
+            <div class="flex items-center gap-2 text-xs text-[#787774] dark:text-[#9b9a97]">
+              <span>Preview:</span>
+              <span id="member-preview-chip"></span>
+            </div>
+            <button
+              type="submit"
+              id="member-submit-btn"
+              class="px-3.5 py-1.5 rounded-md text-xs font-medium bg-[#2383e2] hover:bg-[#1b6ec2] text-white transition"
+            >
+              Simpan Member
+            </button>
+          </div>
+        </form>
+
+        <!-- Registered Team Members Directory -->
+        <div class="space-y-2.5">
+          <div class="flex flex-wrap items-center justify-between gap-2">
+            <span class="text-xs font-semibold text-[#37352f] dark:text-[#e6e6e6]">
+              Daftar Member Terdaftar (<span id="members-modal-count">0</span>)
+            </span>
+            <div class="flex items-center gap-1 text-[11px]">
+              <button type="button" onclick="setMembersModalRoleFilter('ALL')" id="mm-tab-ALL" class="px-2 py-1 rounded bg-[#2383e2] text-white font-medium">All</button>
+              <button type="button" onclick="setMembersModalRoleFilter('Architect')" id="mm-tab-Architect" class="px-2 py-1 rounded text-[#787774] dark:text-[#9b9a97] hover:bg-black/5 dark:hover:bg-white/5">Architect</button>
+              <button type="button" onclick="setMembersModalRoleFilter('Estimator')" id="mm-tab-Estimator" class="px-2 py-1 rounded text-[#787774] dark:text-[#9b9a97] hover:bg-black/5 dark:hover:bg-white/5">Estimator</button>
+              <button type="button" onclick="setMembersModalRoleFilter('Marketing')" id="mm-tab-Marketing" class="px-2 py-1 rounded text-[#787774] dark:text-[#9b9a97] hover:bg-black/5 dark:hover:bg-white/5">Marketing</button>
+            </div>
+          </div>
+
+          <div id="members-directory-list" class="divide-y divide-[#e9e9e7] dark:divide-[#2f2f2f] border border-[#e9e9e7] dark:border-[#2f2f2f] rounded-lg overflow-hidden"></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Account & Collaboration Modal (Google Sign-In / Quick Access & Full User ID) -->
+  <div id="auth-modal" class="hidden fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/65 backdrop-blur-[1px]">
+    <div class="w-full max-w-md rounded-xl bg-white dark:bg-[#202020] border border-[#e9e9e7] dark:border-[#2f2f2f] shadow-2xl p-5 space-y-4 animate-pop">
+      <div class="flex items-center justify-between">
+        <div class="flex items-center gap-2">
+          <div class="w-7 h-7 rounded-md bg-emerald-500/15 text-emerald-400 flex items-center justify-center">
+            <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+              <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"></path>
+            </svg>
+          </div>
+          <div>
+            <h3 class="font-semibold text-sm text-[#37352f] dark:text-[#e6e6e6]">Workspace Collaboration & Auth</h3>
+            <p class="text-[11px] text-[#787774] dark:text-[#9b9a97]">Sinkronisasi real-time antar perangkat tim</p>
+          </div>
+        </div>
+        <button onclick="closeAuthModal()" class="text-[#9b9a97] hover:text-white text-xs px-1.5">✕</button>
+      </div>
+
+      <!-- Current Active Session Box -->
+      <div class="p-3 rounded-lg bg-[#fbfbfa] dark:bg-[#191919] border border-[#e9e9e7] dark:border-[#2f2f2f] space-y-2 text-xs">
+        <div class="flex items-center justify-between">
+          <span class="text-[#787774] dark:text-[#9b9a97]">Status Koneksi</span>
+          <span id="auth-modal-conn-status" class="font-medium text-emerald-400">● Live Synced</span>
+        </div>
+        <div class="flex items-center justify-between">
+          <span class="text-[#787774] dark:text-[#9b9a97]">Metode Login</span>
+          <span id="auth-modal-provider" class="font-medium text-[#37352f] dark:text-[#e6e6e6]">Anonymous Quick Access</span>
+        </div>
+        <div>
+          <div class="text-[#787774] dark:text-[#9b9a97] mb-1">Full Collaborator User ID</div>
+          <div class="flex items-center gap-1.5">
+            <code id="auth-modal-uid" class="flex-1 px-2 py-1 rounded bg-black/5 dark:bg-black/40 border border-[#e9e9e7] dark:border-[#2f2f2f] text-[11px] font-mono break-all select-all text-[#37352f] dark:text-[#e6e6e6]">
+              Connecting...
+            </code>
+            <button type="button" onclick="copyCurrentUserId()" class="px-2.5 py-1 rounded bg-black/10 dark:bg-white/10 hover:bg-[#2383e2] hover:text-white text-[11px] font-medium shrink-0 transition">
+              Copy
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <div id="auth-modal-message" class="hidden p-2.5 rounded-md text-xs bg-amber-500/15 text-amber-400 border border-amber-500/30"></div>
+
+      <!-- Sign-In Options -->
+      <div class="space-y-2">
+        <button
+          id="google-signin-btn"
+          type="button"
+          onclick="signInWithGoogleAccount()"
+          class="w-full py-2 px-3 rounded-lg bg-white hover:bg-gray-100 text-gray-800 border border-gray-300 text-xs font-semibold flex items-center justify-center gap-2 shadow-xs transition"
+        >
+          <svg class="w-4 h-4" viewBox="0 0 24 24">
+            <path fill="#4285F4" d="M23.745 12.27c0-.7-.06-1.4-.19-2.07H12v4.51h6.6c-.29 1.52-1.14 2.82-2.4 3.68v3.05h3.88c2.27-2.09 3.665-5.17 3.665-9.17Z"/>
+            <path fill="#34A853" d="M12 24c3.24 0 5.95-1.08 7.93-2.91l-3.88-3.05c-1.08.72-2.45 1.16-4.05 1.16-3.12 0-5.77-2.11-6.72-4.96H1.29v3.14C3.26 21.3 7.31 24 12 24Z"/>
+            <path fill="#FBBC05" d="M5.28 14.24c-.24-.72-.38-1.49-.38-2.24s.14-1.52.38-2.24V6.62H1.29C.47 8.24 0 10.06 0 12s.47 3.76 1.29 5.38l3.99-3.14Z"/>
+            <path fill="#EA4335" d="M12 4.75c1.77 0 3.35.61 4.6 1.8l3.42-3.42C17.95 1.19 15.24 0 12 0 7.31 0 3.26 2.7 1.29 6.62l3.99 3.14c.95-2.85 3.6-4.96 6.72-4.96Z"/>
+          </svg>
+          <span>Sign in with Google</span>
+        </button>
+
+        <button
+          id="quick-anon-btn"
+          type="button"
+          onclick="switchToAnonymousQuickAccess()"
+          class="w-full py-2 px-3 rounded-lg bg-black/5 dark:bg-white/5 hover:bg-black/10 dark:hover:bg-white/10 text-[#37352f] dark:text-[#e6e6e6] border border-[#e9e9e7] dark:border-[#2f2f2f] text-xs font-medium transition"
+        >
+          Use Quick Access (Anonymous Guest)
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Subtle Bottom-Right Toast Notification -->
+  <div id="toast-container" class="fixed bottom-4 right-4 z-50 flex flex-col gap-2 pointer-events-none"></div>
+
+  <script type="module">
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
+    import {
+      getAuth,
+      signInAnonymously,
+      signInWithCustomToken,
+      GoogleAuthProvider,
+      signInWithPopup,
+      signOut,
+      onAuthStateChanged
+    } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
+    import {
+      getFirestore,
+      doc,
+      getDoc,
+      addDoc,
+      setDoc,
+      updateDoc,
+      deleteDoc,
+      onSnapshot,
+      collection,
+      getDocs,
+      writeBatch
+    } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+
+    /*************************************************************************
+     * 1. INITIAL CONFIGURATION, SECTION SCHEMAS & SEED DATA
+     *************************************************************************/
+    const REFERENCE_TODAY = new Date(2026, 10, 25); // Wednesday, November 25, 2026
+    const appId = typeof __app_id !== 'undefined' ? __app_id : 'default-app-id';
+    const firebaseConfig = (typeof __firebase_config !== 'undefined' && __firebase_config)
+      ? JSON.parse(__firebase_config)
+      : null;
+
+    const COLOR_SWATCHES = [
+      { id: 'bg-amber-600', label: 'Amber' },
+      { id: 'bg-emerald-600', label: 'Emerald' },
+      { id: 'bg-cyan-600', label: 'Cyan' },
+      { id: 'bg-indigo-600', label: 'Indigo' },
+      { id: 'bg-rose-600', label: 'Rose' },
+      { id: 'bg-orange-600', label: 'Orange' },
+      { id: 'bg-pink-600', label: 'Pink' },
+      { id: 'bg-slate-600', label: 'Slate' },
+      { id: 'bg-teal-600', label: 'Teal' },
+      { id: 'bg-purple-600', label: 'Purple' }
+    ];
+
+    const INITIAL_TEAM_MEMBERS = [
+      { seedId: 'member-faiq', name: 'Faiq Akbar', role: 'Architect', color: 'bg-amber-600', contact: '' },
+      { seedId: 'member-garin', name: 'Garin Nugroho', role: 'Architect', color: 'bg-emerald-600', contact: '' },
+      { seedId: 'member-galang', name: 'Ahmad Galang Alkahfie', role: 'Architect', color: 'bg-cyan-600', contact: '' },
+      { seedId: 'member-khirza', name: 'Khirza Faiz', role: 'Architect', color: 'bg-indigo-600', contact: '' },
+      { seedId: 'member-febrika', name: 'Febrika Intana', role: 'Estimator', color: 'bg-rose-600', contact: '' },
+      { seedId: 'member-ivanny', name: 'IVANNY MR', role: 'Estimator', color: 'bg-orange-600', contact: '' },
+      { seedId: 'member-anggie', name: 'anggie mila', role: 'Estimator', color: 'bg-pink-600', contact: '' },
+      { seedId: 'member-hanif', name: 'Hanif Wicaksana', role: 'Marketing', color: 'bg-slate-600', contact: '' },
+      { seedId: 'member-taufan', name: 'Taufan Rizkianto', role: 'Marketing', color: 'bg-teal-600', contact: '' },
+      { seedId: 'member-unggul', name: 'Unggul Prasetyo', role: 'Marketing', color: 'bg-purple-600', contact: '' }
+    ];
+
+    const STATUS_OPTIONS = [
+      {
+        value: 'In progress',
+        pillClass: 'bg-[#1d3b58] text-[#93c5fd] border border-[#2a527a]',
+        dotClass: 'bg-[#529cca]'
+      },
+      {
+        value: 'Not started',
+        pillClass: 'bg-[#4c2323] text-[#fca5a5] border border-[#6e3333]',
+        dotClass: 'bg-[#e16259]'
+      },
+      {
+        value: 'Revision',
+        pillClass: 'bg-[#4a3219] text-[#fcd34d] border border-[#6e4b26]',
+        dotClass: 'bg-[#d9730d]'
+      },
+      {
+        value: 'Done',
+        pillClass: 'bg-[#1e3a2f] text-[#6ee7b7] border border-[#2c5746]',
+        dotClass: 'bg-[#4dab9a]'
+      }
+    ];
+
+    const SECTION_CONFIGS = [
+      {
+        id: 'drawing-process',
+        title: 'Drawing Process',
+        projectIcon: 'palm',
+        columns: [
+          { key: 'project', label: 'Project', type: 'title', icon: 'palm' },
+          { key: 'architect', label: 'Architect', type: 'person', targetRole: 'Architect', icon: 'users' },
+          { key: 'time', label: 'Time', type: 'date', icon: 'calendar' },
+          { key: 'status', label: 'Status', type: 'status', icon: 'status' },
+          { key: 'marketing', label: 'Marketing', type: 'person', targetRole: 'Marketing', icon: 'users' },
+          { key: 'deadline', label: 'Deadline', type: 'deadline', icon: 'calendar' },
+          { key: 'note', label: 'Note', type: 'text', icon: 'note' }
+        ]
+      },
+      {
+        id: 'project-board-architect',
+        title: 'Project Board Architect',
+        projectIcon: 'palm',
+        columns: [
+          { key: 'project', label: 'Project', type: 'title', icon: 'palm' },
+          { key: 'marketing', label: 'Marketing', type: 'person', targetRole: 'Marketing', icon: 'users' },
+          { key: 'date', label: 'Date', type: 'date', icon: 'calendar' },
+          { key: 'architect', label: 'Architect', type: 'person', targetRole: 'Architect', icon: 'users' },
+          { key: 'deadline', label: 'Deadline', type: 'deadline', icon: 'calendar' },
+          { key: 'status', label: 'Status', type: 'status', icon: 'status' },
+          { key: 'note', label: 'Note', type: 'text', icon: 'note' },
+          { key: 'time', label: 'Time', type: 'date', icon: 'calendar' }
+        ]
+      },
+      {
+        id: 'waiting-list',
+        title: 'Waiting List',
+        projectIcon: 'palm',
+        columns: [
+          { key: 'project', label: 'Project', type: 'title', icon: 'palm' },
+          { key: 'marketing', label: 'Marketing', type: 'person', targetRole: 'Marketing', icon: 'users' },
+          { key: 'deadline', label: 'Deadline', type: 'deadline', icon: 'calendar' },
+          { key: 'architect', label: 'Architect', type: 'person', targetRole: 'Architect', icon: 'users' },
+          { key: 'status', label: 'Status', type: 'status', icon: 'status' },
+          { key: 'note', label: 'Note', type: 'text', icon: 'note' },
+          { key: 'time', label: 'Time', type: 'date', icon: 'calendar' }
+        ]
+      },
+      {
+        id: 'survey',
+        title: 'Survey',
+        projectIcon: 'plane',
+        columns: [
+          { key: 'project', label: 'Project', type: 'title', icon: 'plane' },
+          { key: 'marketing', label: 'Marketing', type: 'person', targetRole: 'Marketing', icon: 'users' },
+          { key: 'date', label: 'Date', type: 'date', icon: 'calendar' },
+          { key: 'architect', label: 'Architect', type: 'person', targetRole: 'Architect', icon: 'users' },
+          { key: 'note', label: 'Note', type: 'text', icon: 'note' }
+        ]
+      },
+      {
+        id: 'estimator',
+        title: 'Estimator',
+        projectIcon: 'building',
+        columns: [
+          { key: 'project', label: 'Project', type: 'title', icon: 'building' },
+          { key: 'estimator', label: 'Estimator', type: 'person', targetRole: 'Estimator', icon: 'users' },
+          { key: 'timeline', label: 'Timeline', type: 'date', icon: 'calendar' },
+          { key: 'status', label: 'Status', type: 'status', icon: 'status' },
+          { key: 'arsitek', label: 'Arsitek', type: 'person', targetRole: 'Architect', icon: 'users' },
+          { key: 'deadline', label: 'Deadline', type: 'deadline', icon: 'calendar' },
+          { key: 'marketing', label: 'Marketing', type: 'person', targetRole: 'Marketing', icon: 'users' },
+          { key: 'note', label: 'Note', type: 'text', icon: 'note' }
+        ]
+      },
+      {
+        id: 'project-board-estimator',
+        title: 'Project Board Estimator',
+        projectIcon: 'palm',
+        columns: [
+          { key: 'project', label: 'Project', type: 'title', icon: 'palm' },
+          { key: 'estimator', label: 'Estimator', type: 'person', targetRole: 'Estimator', icon: 'users' },
+          { key: 'marketing', label: 'Marketing', type: 'person', targetRole: 'Marketing', icon: 'users' },
+          { key: 'timeline', label: 'Timeline', type: 'date', icon: 'calendar' },
+          { key: 'arsitek', label: 'Arsitek', type: 'person', targetRole: 'Architect', icon: 'users' },
+          { key: 'deadline', label: 'Deadline', type: 'deadline', icon: 'calendar' },
+          { key: 'status', label: 'Status', type: 'status', icon: 'status' },
+          { key: 'note', label: 'Note', type: 'text', icon: 'note' }
+        ]
+      }
+    ];
+
+    const INITIAL_PROJECTS = [
+      // Drawing Process
+      { seedId: 'proj-dp-1', sectionId: 'drawing-process', order: 1, project: 'Pak Ibrahim', architect: 'Garin Nugroho', arsitek: 'Garin Nugroho', estimator: '', time: 'Nov 18 → Nov 21', timeline: 'Nov 18 → Nov 21', date: '', status: 'In progress', marketing: 'Hanif Wicaksana', deadline: 'Nov 24', note: '' },
+      { seedId: 'proj-dp-2', sectionId: 'drawing-process', order: 2, project: 'Ibu Leony Candigolf', architect: 'Ahmad Galang Alkahfie', arsitek: 'Ahmad Galang Alkahfie', estimator: '', time: 'Nov 23 → Nov 25', timeline: 'Nov 23 → Nov 25', date: '', status: 'In progress', marketing: 'Hanif Wicaksana', deadline: 'Nov 30', note: '' },
+      { seedId: 'proj-dp-3', sectionId: 'drawing-process', order: 3, project: 'Pak Gian Purbalingga', architect: 'Faiq Akbar', arsitek: 'Faiq Akbar', estimator: '', time: 'Nov 23 → Nov 26', timeline: 'Nov 23 → Nov 26', date: '', status: 'In progress', marketing: 'Hanif Wicaksana', deadline: 'Dec 1', note: '' },
+      // Project Board Architect
+      { seedId: 'proj-pba-1', sectionId: 'project-board-architect', order: 1, project: 'Pak Alex', architect: 'Faiq Akbar', arsitek: 'Faiq Akbar', estimator: '', marketing: 'Hanif Wicaksana', date: '', deadline: '', status: 'Not started', note: 'Bangunan belum jadi', time: '', timeline: '' },
+      { seedId: 'proj-pba-2', sectionId: 'project-board-architect', order: 2, project: 'Ibu Anita BSB', architect: 'Garin Nugroho', arsitek: 'Garin Nugroho', estimator: '', marketing: 'Taufan Rizkianto', date: '', deadline: '', status: 'Not started', note: 'Penawaran', time: '', timeline: '' },
+      // Waiting List
+      { seedId: 'proj-wl-1', sectionId: 'waiting-list', order: 1, project: 'Pak Heri', architect: 'Khirza Faiz', arsitek: 'Khirza Faiz', estimator: '', marketing: 'Taufan Rizkianto', deadline: '', status: 'Not started', note: '', time: '', timeline: '', date: '' },
+      { seedId: 'proj-wl-2', sectionId: 'waiting-list', order: 2, project: 'Cahyani', architect: 'Garin Nugroho', arsitek: 'Garin Nugroho', estimator: '', marketing: 'Taufan Rizkianto', deadline: '', status: 'Not started', note: '', time: '', timeline: '', date: '' },
+      // Survey
+      { seedId: 'proj-sv-1', sectionId: 'survey', order: 1, project: 'Wujil Tambahan', architect: 'Khirza Faiz', arsitek: 'Khirza Faiz', estimator: '', marketing: 'Unggul Prasetyo', date: '', deadline: '', status: 'Not started', note: '', time: '', timeline: '' },
+      { seedId: 'proj-sv-2', sectionId: 'survey', order: 2, project: 'Pemalang', architect: '', arsitek: '', estimator: '', marketing: 'Unggul Prasetyo', date: 'November 24, 2026', deadline: '', status: 'Not started', note: '', time: '', timeline: '' },
+      // Estimator
+      { seedId: 'proj-est-1', sectionId: 'estimator', order: 1, project: 'Pak Tirto-Tangerang', estimator: 'Febrika Intana', timeline: 'Nov 20 → Nov 21', time: 'Nov 20 → Nov 21', date: '', status: 'In progress', arsitek: 'Faiq Akbar', architect: 'Faiq Akbar', deadline: 'Nov 21', marketing: 'Hanif Wicaksana', note: '' },
+      { seedId: 'proj-est-2', sectionId: 'estimator', order: 2, project: 'Pak Manto PDI', estimator: 'Febrika Intana', timeline: 'Nov 18 → Nov 20', time: 'Nov 18 → Nov 20', date: '', status: 'In progress', arsitek: '', architect: '', deadline: '', marketing: 'Hanif Wicaksana', note: '' },
+      { seedId: 'proj-est-3', sectionId: 'estimator', order: 3, project: 'PT. Dwiwahana Delta Megah', estimator: 'IVANNY MR', timeline: 'Nov 23 → Nov 25', time: 'Nov 23 → Nov 25', date: '', status: 'In progress', arsitek: '', architect: '', deadline: '', marketing: 'Hanif Wicaksana', note: '' },
+      // Project Board Estimator
+      { seedId: 'proj-pbe-1', sectionId: 'project-board-estimator', order: 1, project: 'Bu Anita-BSB', estimator: 'anggie mila', marketing: 'Taufan Rizkianto', timeline: '', time: '', date: '', arsitek: '', architect: '', deadline: '', status: 'Not started', note: '' }
+    ];
+
+    /*************************************************************************
+     * 2. APPLICATION STATE & FIREBASE INITIALIZATION
+     *************************************************************************/
+    let app = null;
+    let db = null;
+    let auth = null;
+    let currentUser = null;
+    let unsubscribeProjects = null;
+    let unsubscribeMembers = null;
+    let unsubscribeSettings = null;
+    let initialSeedChecked = false;
+
+    const uiState = {
+      theme: 'dark',
+      workspaceMode: 'active', // 'active' | 'done'
+      globalView: 'table', // 'table' | 'board'
+      driveUrl: 'https://drive.google.com',
+      sectionUI: {}, // { [sectionId]: { collapsed: bool, view: 'table'|'board', sortField: null|string, sortDir: 'asc'|'desc' } }
+      projects: [], // Live synced from Firestore 'projects'
+      teamMembers: [], // Live synced from Firestore 'team_members'
+      membersModalRoleFilter: 'ALL',
+      selectedMemberSwatch: 'bg-amber-600',
+      pendingAssignTarget: null // { sectionId, rowId, fieldKey } when creating member from cell popover
+    };
+
+    SECTION_CONFIGS.forEach(s => {
+      uiState.sectionUI[s.id] = { collapsed: false, view: 'table', sortField: null, sortDir: 'asc' };
+    });
+
+    let filterState = {
+      search: '',
+      role: 'ALL',
+      member: 'ALL',
+      status: 'ALL',
+      overdueOnly: false
+    };
+
+    let activeDrawerRowId = null;
+    let deleteConfirmArmed = false;
+    let deleteMemberArmedId = null;
+    let activePopoverContext = null;
+
+    function getProjectsCol() {
+      return collection(db, 'artifacts', appId, 'public', 'data', 'projects');
+    }
+
+    function getMembersCol() {
+      return collection(db, 'artifacts', appId, 'public', 'data', 'team_members');
+    }
+
+    function getSettingsDoc() {
+      return doc(db, 'artifacts', appId, 'public', 'data', 'workspace_settings', 'main');
+    }
+
+    async function initFirebaseWorkspace() {
+      if (!firebaseConfig) {
+        updateSyncIndicator('Offline Demo Mode', false);
+        uiState.teamMembers = INITIAL_TEAM_MEMBERS.map(m => ({ id: m.seedId, ...m }));
+        uiState.projects = INITIAL_PROJECTS.map(p => ({ id: p.seedId, ...p }));
+        renderWorkspace();
+        return;
+      }
+
+      try {
+        app = initializeApp(firebaseConfig);
+        db = getFirestore(app);
+        auth = getAuth(app);
+
+        // RULE 3: Authenticate FIRST before attaching any Firestore listeners or queries
+        if (typeof __initial_auth_token !== 'undefined' && __initial_auth_token) {
+          await signInWithCustomToken(auth, __initial_auth_token);
+        } else {
+          await signInAnonymously(auth);
+        }
+
+        currentUser = auth.currentUser;
+        updateAuthProfileUI(currentUser);
+        await seedFirestoreIfEmpty();
+        startRealtimeListeners();
+
+        onAuthStateChanged(auth, (user) => {
+          currentUser = user;
+          updateAuthProfileUI(user);
+          if (user && !unsubscribeProjects) {
+            startRealtimeListeners();
+          }
+        });
+      } catch (err) {
+        console.error('Firebase initialization error:', err);
+        updateSyncIndicator('Sync Error', false);
+        showToast('Gagal menghubungkan Firebase: ' + (err.message || 'Unknown error'));
+      }
+    }
+
+    async function seedFirestoreIfEmpty() {
+      if (!currentUser || initialSeedChecked) return;
+      initialSeedChecked = true;
+
+      try {
+        const [projSnap, memSnap] = await Promise.all([
+          getDocs(getProjectsCol()),
+          getDocs(getMembersCol())
+        ]);
+
+        const batch = writeBatch(db);
+        let hasWrites = false;
+
+        if (memSnap.empty) {
+          INITIAL_TEAM_MEMBERS.forEach((m, idx) => {
+            const ref = doc(getMembersCol(), m.seedId);
+            batch.set(ref, {
+              name: m.name,
+              role: m.role,
+              color: m.color,
+              contact: m.contact || '',
+              createdAt: 1700000000000 + idx
+            });
+          });
+          hasWrites = true;
+        }
+
+        if (projSnap.empty) {
+          INITIAL_PROJECTS.forEach((p) => {
+            const ref = doc(getProjectsCol(), p.seedId);
+            const { seedId, ...data } = p;
+            batch.set(ref, data);
+          });
+          hasWrites = true;
+        }
+
+        if (hasWrites) {
+          await batch.commit();
+        }
+      } catch (err) {
+        console.error('Error seeding initial Firestore data:', err);
+      }
+    }
+
+    function startRealtimeListeners() {
+      if (!currentUser || !db) return;
+
+      // 1. Real-time Projects Listener
+      if (unsubscribeProjects) unsubscribeProjects();
+      unsubscribeProjects = onSnapshot(
+        getProjectsCol(),
+        (snapshot) => {
+          const items = [];
+          snapshot.forEach((docSnap) => {
+            items.push({ id: docSnap.id, ...docSnap.data() });
+          });
+          // Sort in JavaScript memory (RULE 2: no orderBy in query)
+          items.sort((a, b) => (a.order ?? 9999) - (b.order ?? 9999));
+          uiState.projects = items;
+          updateSyncIndicator('Live Synced', true);
+          renderWorkspace();
+
+          // Keep open slide-over drawer fresh if another user updates the same row
+          if (activeDrawerRowId) {
+            const updatedRow = uiState.projects.find(p => p.id === activeDrawerRowId);
+            if (updatedRow) {
+              const sec = SECTION_CONFIGS.find(s => s.id === updatedRow.sectionId);
+              if (sec && document.activeElement?.tagName !== 'INPUT' && document.activeElement?.tagName !== 'TEXTAREA') {
+                renderDrawerBody(sec, updatedRow);
+              }
+            } else {
+              closeDrawer();
+            }
+          }
+        },
+        (error) => {
+          console.error('Firestore projects listener error:', error);
+          updateSyncIndicator('Sync Disconnected', false);
+        }
+      );
+
+      // 2. Real-time Team Members Listener
+      if (unsubscribeMembers) unsubscribeMembers();
+      unsubscribeMembers = onSnapshot(
+        getMembersCol(),
+        (snapshot) => {
+          const members = [];
+          snapshot.forEach((docSnap) => {
+            members.push({ id: docSnap.id, ...docSnap.data() });
+          });
+          members.sort((a, b) => (a.createdAt ?? 0) - (b.createdAt ?? 0));
+          uiState.teamMembers = members;
+          renderHeaderCollaboratorStack();
+          renderWorkspace();
+          if (!document.getElementById('members-modal').classList.contains('hidden')) {
+            renderMembersDirectory();
+          }
+        },
+        (error) => {
+          console.error('Firestore team_members listener error:', error);
+        }
+      );
+
+      // 3. Real-time Workspace Settings Listener (Drive URL)
+      if (unsubscribeSettings) unsubscribeSettings();
+      unsubscribeSettings = onSnapshot(
+        getSettingsDoc(),
+        (docSnap) => {
+          if (docSnap.exists() && docSnap.data().driveUrl) {
+            uiState.driveUrl = docSnap.data().driveUrl;
+          }
+        },
+        (error) => {
+          console.error('Firestore settings listener error:', error);
+        }
+      );
+    }
+
+    function updateSyncIndicator(label, isConnected) {
+      const textEl = document.getElementById('sync-status');
+      const dotEl = document.getElementById('sync-dot');
+      const pillEl = document.getElementById('sync-status-pill');
+      if (textEl) textEl.textContent = label;
+      if (dotEl && pillEl) {
+        if (isConnected) {
+          dotEl.className = 'w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse';
+          pillEl.className = 'inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full text-[11px] font-medium bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20';
+        } else {
+          dotEl.className = 'w-1.5 h-1.5 rounded-full bg-amber-400';
+          pillEl.className = 'inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full text-[11px] font-medium bg-amber-500/10 text-amber-500 border border-amber-500/20';
+        }
+      }
+    }
+
+    /*************************************************************************
+     * 3. AUTHENTICATION & COLLABORATOR PROFILE UI
+     *************************************************************************/
+    function updateAuthProfileUI(user) {
+      const avatarEl = document.getElementById('auth-user-avatar');
+      const labelEl = document.getElementById('auth-user-label');
+      const uidEl = document.getElementById('auth-modal-uid');
+      const providerEl = document.getElementById('auth-modal-provider');
+      const connEl = document.getElementById('auth-modal-conn-status');
+
+      if (!user) {
+        if (avatarEl) avatarEl.textContent = '?';
+        if (labelEl) labelEl.textContent = 'Sign In';
+        if (uidEl) uidEl.textContent = 'Not signed in';
+        if (connEl) connEl.textContent = '● Disconnected';
+        return;
+      }
+
+      const isGoogle = user.providerData && user.providerData.some(p => p.providerId === 'google.com');
+      const displayName = user.displayName || (isGoogle ? user.email : 'Quick Access');
+      const initial = (displayName || 'U').trim().charAt(0).toUpperCase();
+
+      if (avatarEl) avatarEl.textContent = initial;
+      if (labelEl) labelEl.textContent = displayName;
+      if (uidEl) uidEl.textContent = user.uid;
+      if (providerEl) providerEl.textContent = isGoogle ? `Google (${user.email || user.displayName})` : 'Anonymous Quick Access';
+      if (connEl) connEl.textContent = '● Live Synced';
+    }
+
+    function openAuthModal() {
+      updateAuthProfileUI(currentUser);
+      document.getElementById('auth-modal-message').classList.add('hidden');
+      document.getElementById('auth-modal').classList.remove('hidden');
+    }
+
+    function closeAuthModal() {
+      document.getElementById('auth-modal').classList.add('hidden');
+    }
+
+    async function signInWithGoogleAccount() {
+      if (!auth) return;
+      const msgBox = document.getElementById('auth-modal-message');
+      msgBox.classList.add('hidden');
+      try {
+        const provider = new GoogleAuthProvider();
+        const result = await signInWithPopup(auth, provider);
+        currentUser = result.user;
+        updateAuthProfileUI(currentUser);
+        closeAuthModal();
+        showToast(`Masuk sebagai ${currentUser.displayName || currentUser.email}`);
+      } catch (err) {
+        console.warn('Google sign-in popup issue:', err);
+        msgBox.textContent = 'Google Sign-In tidak tersedia di lingkungan pratinjau ini atau diblokir browser. Anda tetap terhubung penuh menggunakan Quick Access.';
+        msgBox.classList.remove('hidden');
+      }
+    }
+
+    async function switchToAnonymousQuickAccess() {
+      if (!auth) return;
+      try {
+        if (currentUser && !currentUser.isAnonymous) {
+          await signOut(auth);
+        }
+        if (!auth.currentUser) {
+          await signInAnonymously(auth);
+        }
+        currentUser = auth.currentUser;
+        updateAuthProfileUI(currentUser);
+        closeAuthModal();
+        showToast('Terhubung dengan Quick Access');
+      } catch (err) {
+        showToast('Gagal beralih ke Quick Access');
+      }
+    }
+
+    function copyCurrentUserId() {
+      const uid = currentUser?.uid || '';
+      if (!uid) return;
+      const tempInput = document.createElement('textarea');
+      tempInput.value = uid;
+      tempInput.style.position = 'fixed';
+      tempInput.style.opacity = '0';
+      document.body.appendChild(tempInput);
+      tempInput.select();
+      try {
+        document.execCommand('copy');
+        showToast('User ID disalin ke clipboard');
+      } catch (e) {
+        showToast('Gagal menyalin User ID');
+      }
+      document.body.removeChild(tempInput);
+    }
+
+    /*************************************************************************
+     * 4. TEAM MEMBER MANAGEMENT (+ KELOLA MEMBER MODAL)
+     *************************************************************************/
+    function renderHeaderCollaboratorStack() {
+      const stackBtn = document.getElementById('header-avatar-stack');
+      if (!stackBtn) return;
+      const members = uiState.teamMembers;
+      if (members.length === 0) return;
+
+      const visible = members.slice(0, 4);
+      const remaining = Math.max(0, members.length - visible.length);
+
+      stackBtn.innerHTML = visible.map(m => `
+        <span
+          class="w-5 h-5 rounded-full ${escapeHTML(m.color || 'bg-blue-600')} text-white text-[10px] font-semibold flex items-center justify-center ring-1 ring-white dark:ring-[#191919]"
+          title="${escapeHTML(m.name)} (${escapeHTML(m.role)})"
+        >
+          ${escapeHTML(getInitial(m.name))}
+        </span>
+      `).join('') + (remaining > 0 ? `<span class="pl-2 text-[11px] text-[#787774] dark:text-[#9b9a97]">+${remaining}</span>` : '');
+    }
+
+    function openMembersModal(defaultRole = 'Architect', pendingAssign = null) {
+      closePopover();
+      uiState.pendingAssignTarget = pendingAssign;
+      resetMemberForm(defaultRole);
+      renderColorSwatches();
+      renderMembersDirectory();
+      document.getElementById('members-modal').classList.remove('hidden');
+      setTimeout(() => document.getElementById('member-name-input')?.focus(), 30);
+    }
+
+    function closeMembersModal() {
+      document.getElementById('members-modal').classList.add('hidden');
+      uiState.pendingAssignTarget = null;
+      deleteMemberArmedId = null;
+    }
+
+    function renderColorSwatches() {
+      const container = document.getElementById('member-color-swatches');
+      if (!container) return;
+      container.innerHTML = COLOR_SWATCHES.map(sw => {
+        const isSelected = uiState.selectedMemberSwatch === sw.id;
+        return `
+          <button
+            type="button"
+            onclick="selectMemberSwatch('${sw.id}')"
+            title="${sw.label}"
+            class="w-5 h-5 rounded-full ${sw.id} transition ${isSelected ? 'ring-2 ring-offset-2 ring-offset-white dark:ring-offset-[#191919] ring-[#2383e2] scale-110' : 'opacity-75 hover:opacity-100'}"
+          ></button>
+        `;
+      }).join('');
+    }
+
+    function selectMemberSwatch(colorClass) {
+      uiState.selectedMemberSwatch = colorClass;
+      renderColorSwatches();
+      updateMemberFormPreview();
+    }
+
+    function updateMemberFormPreview() {
+      const previewEl = document.getElementById('member-preview-chip');
+      if (!previewEl) return;
+      const nameVal = document.getElementById('member-name-input')?.value.trim() || 'Nama Member';
+      const roleVal = document.getElementById('member-role-input')?.value || 'Architect';
+      const colorVal = uiState.selectedMemberSwatch || 'bg-amber-600';
+
+      previewEl.innerHTML = `
+        <span class="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full bg-black/5 dark:bg-white/5">
+          <span class="w-4 h-4 rounded-full ${colorVal} text-white text-[9px] font-bold flex items-center justify-center">${escapeHTML(getInitial(nameVal))}</span>
+          <span class="font-medium text-[#37352f] dark:text-[#e6e6e6]">${escapeHTML(nameVal)}</span>
+          <span class="text-[10px] text-[#787774] dark:text-[#9b9a97]">• ${escapeHTML(roleVal)}</span>
+        </span>
+      `;
+    }
+
+    function resetMemberForm(defaultRole = 'Architect') {
+      document.getElementById('member-edit-id').value = '';
+      document.getElementById('member-name-input').value = '';
+      document.getElementById('member-role-input').value = defaultRole;
+      document.getElementById('member-contact-input').value = '';
+      document.getElementById('member-form-title').textContent = '+ Tambah Member Baru';
+      document.getElementById('member-submit-btn').textContent = 'Simpan Member';
+      document.getElementById('member-form-cancel-edit').classList.add('hidden');
+      uiState.selectedMemberSwatch = COLOR_SWATCHES[uiState.teamMembers.length % COLOR_SWATCHES.length].id;
+      renderColorSwatches();
+      updateMemberFormPreview();
+    }
+
+    function startEditMember(memberId) {
+      const member = uiState.teamMembers.find(m => m.id === memberId);
+      if (!member) return;
+
+      document.getElementById('member-edit-id').value = member.id;
+      document.getElementById('member-name-input').value = member.name || '';
+      document.getElementById('member-role-input').value = member.role || 'Architect';
+      document.getElementById('member-contact-input').value = member.contact || '';
+      document.getElementById('member-form-title').textContent = `Edit Member: ${member.name}`;
+      document.getElementById('member-submit-btn').textContent = 'Update Member';
+      document.getElementById('member-form-cancel-edit').classList.remove('hidden');
+
+      uiState.selectedMemberSwatch = member.color || 'bg-amber-600';
+      renderColorSwatches();
+      updateMemberFormPreview();
+      document.getElementById('member-name-input').focus();
+    }
+
+    async function handleMemberFormSubmit(event) {
+      event.preventDefault();
+      if (!currentUser) return;
+
+      const editId = document.getElementById('member-edit-id').value.trim();
+      const name = document.getElementById('member-name-input').value.trim();
+      const role = document.getElementById('member-role-input').value;
+      const contact = document.getElementById('member-contact-input').value.trim();
+      const color = uiState.selectedMemberSwatch || 'bg-amber-600';
+
+      if (!name) return;
+
+      try {
+        if (editId) {
+          const existing = uiState.teamMembers.find(m => m.id === editId);
+          const oldName = existing?.name;
+
+          await updateDoc(doc(getMembersCol(), editId), {
+            name,
+            role,
+            color,
+            contact
+          });
+
+          // If member was renamed, update existing project assignments seamlessly
+          if (oldName && oldName !== name) {
+            const batch = writeBatch(db);
+            let renamedRows = 0;
+            uiState.projects.forEach(p => {
+              const updates = {};
+              if (p.architect === oldName) updates.architect = name;
+              if (p.arsitek === oldName) updates.arsitek = name;
+              if (p.estimator === oldName) updates.estimator = name;
+              if (p.marketing === oldName) updates.marketing = name;
+              if (Object.keys(updates).length > 0) {
+                batch.update(doc(getProjectsCol(), p.id), updates);
+                renamedRows++;
+              }
+            });
+            if (renamedRows > 0) await batch.commit();
+          }
+
+          showToast(`Member "${name}" diperbarui`);
+          resetMemberForm(role);
+        } else {
+          await addDoc(getMembersCol(), {
+            name,
+            role,
+            color,
+            contact,
+            createdAt: Date.now()
+          });
+
+          // If opened from a specific table cell (+ Tambah Member Baru), auto-assign immediately!
+          if (uiState.pendingAssignTarget) {
+            const { rowId, fieldKey } = uiState.pendingAssignTarget;
+            await updateProjectFields(rowId, { [fieldKey]: name });
+            uiState.pendingAssignTarget = null;
+            closeMembersModal();
+            showToast(`"${name}" ditambahkan & langsung ditugaskan`);
+            return;
+          }
+
+          showToast(`Member baru "${name}" (${role}) ditambahkan`);
+          resetMemberForm(role);
+        }
+      } catch (err) {
+        console.error('Error saving team member:', err);
+        showToast('Gagal menyimpan member: ' + err.message);
+      }
+    }
+
+    function setMembersModalRoleFilter(roleFilter) {
+      uiState.membersModalRoleFilter = roleFilter;
+      ['ALL', 'Architect', 'Estimator', 'Marketing'].forEach(tab => {
+        const btn = document.getElementById(`mm-tab-${tab}`);
+        if (!btn) return;
+        btn.className = tab === roleFilter
+          ? 'px-2 py-1 rounded bg-[#2383e2] text-white font-medium'
+          : 'px-2 py-1 rounded text-[#787774] dark:text-[#9b9a97] hover:bg-black/5 dark:hover:bg-white/5';
+      });
+      renderMembersDirectory();
+    }
+
+    function renderMembersDirectory() {
+      const listEl = document.getElementById('members-directory-list');
+      const countEl = document.getElementById('members-modal-count');
+      if (!listEl) return;
+
+      const filterRole = uiState.membersModalRoleFilter;
+      const filtered = uiState.teamMembers.filter(m => filterRole === 'ALL' || m.role === filterRole);
+      if (countEl) countEl.textContent = filtered.length;
+
+      if (filtered.length === 0) {
+        listEl.innerHTML = `<div class="p-6 text-center text-xs text-[#787774] dark:text-[#9b9a97]">Belum ada member pada kategori ini.</div>`;
+        return;
+      }
+
+      listEl.innerHTML = filtered.map(m => {
+        const isArmed = deleteMemberArmedId === m.id;
+        return `
+          <div class="px-3.5 py-2.5 bg-white dark:bg-[#202020] hover:bg-[#fbfbfa] dark:hover:bg-[#252525] flex items-center justify-between gap-2 transition">
+            <div class="flex items-center gap-2.5 min-w-0">
+              <span class="w-7 h-7 rounded-full ${escapeHTML(m.color || 'bg-blue-600')} text-white text-xs font-bold flex items-center justify-center shrink-0">
+                ${escapeHTML(getInitial(m.name))}
+              </span>
+              <div class="min-w-0">
+                <div class="flex items-center gap-2">
+                  <span class="text-xs font-semibold text-[#37352f] dark:text-[#e6e6e6] truncate">${escapeHTML(m.name)}</span>
+                  <span class="px-1.5 py-0.2 rounded text-[10px] font-medium bg-black/5 dark:bg-white/10 text-[#787774] dark:text-[#9b9a97]">
+                    ${escapeHTML(m.role)}
+                  </span>
+                </div>
+                ${m.contact ? `<div class="text-[11px] text-[#787774] dark:text-[#9b9a97] truncate">${escapeHTML(m.contact)}</div>` : ''}
+              </div>
+            </div>
+
+            <div class="flex items-center gap-1.5 shrink-0">
+              <button
+                type="button"
+                onclick="startEditMember('${m.id}')"
+                class="px-2 py-1 rounded text-[11px] bg-black/5 dark:bg-white/5 hover:bg-[#2383e2] hover:text-white text-[#37352f] dark:text-[#e6e6e6] transition"
+              >
+                Edit
+              </button>
+              <button
+                type="button"
+                onclick="handleDeleteMemberClick('${m.id}')"
+                class="px-2 py-1 rounded text-[11px] transition ${isArmed ? 'bg-red-600 text-white font-semibold' : 'text-red-500 dark:text-red-400 hover:bg-red-500/10'}"
+              >
+                ${isArmed ? 'Confirm?' : 'Hapus'}
+              </button>
+            </div>
+          </div>
+        `;
+      }).join('');
+    }
+
+    async function handleDeleteMemberClick(memberId) {
+      if (!currentUser) return;
+      if (deleteMemberArmedId !== memberId) {
+        deleteMemberArmedId = memberId;
+        renderMembersDirectory();
+        return;
+      }
+
+      deleteMemberArmedId = null;
+      try {
+        await deleteDoc(doc(getMembersCol(), memberId));
+        showToast('Member dihapus dari direktori');
+      } catch (err) {
+        showToast('Gagal menghapus member');
+      }
+    }
+
+    /*************************************************************************
+     * 5. HELPER UTILITIES (ICONS, DATES, AVATARS, STATUSES)
+     *************************************************************************/
+    function getColumnIconSVG(iconType) {
+      const cls = 'w-3.5 h-3.5 text-[#787774] dark:text-[#9b9a97] shrink-0';
+      switch (iconType) {
+        case 'palm':
+          return `<svg class="${cls}" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24"><path d="M13 8c0-2.76-2.46-5-5.5-5S2 5.24 2 8h2l1-1 1 1h4"/><path d="M13 7.14A5.82 5.82 0 0 1 16.5 6c3.04 0 5.5 2.24 5.5 5h-3l-1-1-1 1h-3"/><path d="M5.89 9.71c-2.15 2.15-2.3 5.47-.35 7.43l4.24-4.25.7-.7.71-.71 2.12-2.12c-1.95-1.96-5.27-1.8-7.42.35z"/><path d="M11 15.5c.5 2.5-.17 4.5-1 6.5h4c2-5.5-.5-12-1-14"/></svg>`;
+        case 'plane':
+          return `<svg class="${cls}" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24"><path d="M17.8 19.2 16 11l3.5-3.5C21 6 21.5 4 21 3c-1-.5-3 0-4.5 1.5L13 8 4.8 6.2c-.5-.1-.9.1-1.1.5l-.3.5c-.2.5-.1 1 .3 1.3L9 12l-2 3H4l-1 1 3 2 2 3 1-1v-3l3-2 3.5 5.3c.3.4.8.5 1.3.3l.5-.2c.4-.3.6-.7.5-1.2z"/></svg>`;
+        case 'building':
+          return `<svg class="${cls}" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24"><rect x="4" y="2" width="16" height="20" rx="2"/><path d="M9 22v-4h6v4M8 6h.01M16 6h.01M12 6h.01M12 10h.01M12 14h.01M16 10h.01M16 14h.01M8 10h.01M8 14h.01"/></svg>`;
+        case 'users':
+          return `<svg class="${cls}" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>`;
+        case 'calendar':
+          return `<svg class="${cls}" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4M8 2v4M3 10h18"/></svg>`;
+        case 'status':
+          return `<svg class="${cls}" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9" stroke-dasharray="3 3"/></svg>`;
+        case 'note':
+        default:
+          return `<svg class="${cls}" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24"><path d="M4 6h16M4 12h16M4 18h10"/></svg>`;
+      }
+    }
+
+    function getRowDocIconSVG() {
+      return `<svg class="w-4 h-4 text-[#787774] dark:text-[#9b9a97] shrink-0" fill="none" stroke="currentColor" stroke-width="1.7" viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="8" y1="13" x2="16" y2="13"/><line x1="8" y1="17" x2="13" y2="17"/></svg>`;
+    }
+
+    function getAvatarColor(name) {
+      if (!name) return 'bg-gray-600';
+      const registered = uiState.teamMembers.find(m => m.name.toLowerCase() === name.trim().toLowerCase());
+      if (registered && registered.color) return registered.color;
+
+      const palette = ['bg-blue-600', 'bg-emerald-600', 'bg-violet-600', 'bg-amber-600', 'bg-rose-600', 'bg-cyan-600'];
+      let hash = 0;
+      for (let i = 0; i < name.length; i++) {
+        hash = name.charCodeAt(i) + ((hash << 5) - hash);
+      }
+      return palette[Math.abs(hash) % palette.length];
+    }
+
+    function getInitial(name) {
+      if (!name) return '?';
+      return name.trim().charAt(0).toUpperCase();
+    }
+
+    function renderPersonChip(name) {
+      if (!name || !name.trim()) {
+        return `<span class="text-[#787774]/40 dark:text-[#9b9a97]/30 text-xs select-none">—</span>`;
+      }
+      const colorClass = getAvatarColor(name);
+      const initial = getInitial(name);
+      return `
+        <span class="inline-flex items-center gap-2 max-w-full">
+          <span class="w-5 h-5 rounded-full ${colorClass} text-white text-[10px] font-semibold flex items-center justify-center shrink-0 shadow-xs">
+            ${escapeHTML(initial)}
+          </span>
+          <span class="truncate text-[13px] text-[#37352f] dark:text-[#e6e6e6]">${escapeHTML(name)}</span>
+        </span>
+      `;
+    }
+
+    function renderStatusPill(statusValue) {
+      const statusObj = STATUS_OPTIONS.find(s => s.value.toLowerCase() === (statusValue || '').toLowerCase()) || STATUS_OPTIONS[1];
+      return `
+        <span class="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[12px] font-medium whitespace-nowrap ${statusObj.pillClass}">
+          <span class="w-2 h-2 rounded-full ${statusObj.dotClass} shrink-0"></span>
+          <span>${escapeHTML(statusObj.value)}</span>
+        </span>
+      `;
+    }
+
+    function parseFlexibleDate(str) {
+      if (!str || typeof str !== 'string') return null;
+      const clean = str.trim();
+      if (!clean) return null;
+      const part = clean.includes('→') ? clean.split('→').pop().trim() : clean;
+      const withYear = /\b\d{4}\b/.test(part) ? part : `${part}, 2026`;
+      const parsed = new Date(withYear);
+      if (isNaN(parsed.getTime())) return null;
+      parsed.setHours(0, 0, 0, 0);
+      return parsed;
+    }
+
+    function getDeadlineAlertState(deadlineStr, status) {
+      if (!deadlineStr || status === 'Done') return null;
+      const dt = parseFlexibleDate(deadlineStr);
+      if (!dt) return null;
+      const ref = new Date(REFERENCE_TODAY);
+      ref.setHours(0, 0, 0, 0);
+      if (dt < ref) return 'overdue';
+      if (dt.getTime() === ref.getTime()) return 'due-today';
+      return null;
+    }
+
+    function escapeHTML(str) {
+      if (str === null || str === undefined) return '';
+      return String(str)
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#039;');
+    }
+
+    function showToast(message) {
+      const container = document.getElementById('toast-container');
+      const toast = document.createElement('div');
+      toast.className = 'px-3.5 py-2 rounded-lg text-xs font-medium bg-[#252525] text-[#e6e6e6] border border-[#3a3a3a] shadow-xl animate-pop flex items-center gap-2';
+      toast.innerHTML = `<span class="w-1.5 h-1.5 rounded-full bg-[#2383e2]"></span><span>${escapeHTML(message)}</span>`;
+      container.appendChild(toast);
+      setTimeout(() => {
+        toast.style.opacity = '0';
+        toast.style.transition = 'opacity 0.2s ease';
+        setTimeout(() => toast.remove(), 220);
+      }, 2400);
+    }
+
+    /*************************************************************************
+     * 6. FILTERING & METRICS CALCULATION
+     *************************************************************************/
+    function rowMatchesGlobalFilters(row) {
+      // Exclude archived rows from main 6 tables
+      if (row.sectionId === 'done-archive') return false;
+
+      if (filterState.search) {
+        const q = filterState.search.toLowerCase();
+        const proj = (row.project || '').toLowerCase();
+        const note = (row.note || '').toLowerCase();
+        if (!proj.includes(q) && !note.includes(q)) return false;
+      }
+
+      if (filterState.role !== 'ALL') {
+        if (filterState.role === 'Architect' && !(row.architect || row.arsitek)) return false;
+        if (filterState.role === 'Estimator' && !row.estimator) return false;
+        if (filterState.role === 'Marketing' && !row.marketing) return false;
+      }
+
+      if (filterState.member !== 'ALL') {
+        const m = filterState.member.toLowerCase();
+        const members = [row.architect, row.arsitek, row.estimator, row.marketing]
+          .filter(Boolean)
+          .map(x => x.toLowerCase());
+        if (!members.includes(m)) return false;
+      }
+
+      if (filterState.status !== 'ALL') {
+        const st = (row.status || 'Not started').toLowerCase();
+        if (st !== filterState.status.toLowerCase()) return false;
+      }
+
+      if (filterState.overdueOnly) {
+        const alertState = getDeadlineAlertState(row.deadline, row.status);
+        if (!alertState) return false;
+      }
+
+      return true;
+    }
+
+    function updateMetricsAndFiltersUI() {
+      let totalActive = 0;
+      let inProgress = 0;
+      let overdueCount = 0;
+      let completedCount = 0;
+
+      uiState.projects.forEach(row => {
+        const st = row.status || 'Not started';
+        if (row.sectionId === 'done-archive' || st === 'Done') {
+          completedCount++;
+        }
+        if (row.sectionId !== 'done-archive') {
+          totalActive++;
+          if (st === 'In progress') inProgress++;
+          if (getDeadlineAlertState(row.deadline, st)) overdueCount++;
+        }
+      });
+
+      document.getElementById('metric-total').textContent = totalActive;
+      document.getElementById('metric-progress').textContent = inProgress;
+      document.getElementById('metric-overdue').textContent = overdueCount;
+      document.getElementById('metric-done').textContent = completedCount;
+      document.getElementById('done-count-pill').textContent = completedCount;
+
+      document.querySelectorAll('.metric-card').forEach(el => {
+        el.classList.remove('ring-2', 'ring-[#2383e2]');
+      });
+      if (filterState.overdueOnly) {
+        document.getElementById('metric-card-overdue')?.classList.add('ring-2', 'ring-[#2383e2]');
+      } else if (filterState.status === 'In progress') {
+        document.getElementById('metric-card-progress')?.classList.add('ring-2', 'ring-[#2383e2]');
+      }
+
+      // Populate Team Member filter dropdown from live teamMembers + any assigned names
+      const memberSelect = document.getElementById('filter-member');
+      const currentVal = filterState.member;
+      const memberNames = Array.from(new Set(
+        uiState.teamMembers
+          .filter(m => filterState.role === 'ALL' || m.role === filterState.role)
+          .map(m => m.name)
+      )).sort((a, b) => a.localeCompare(b));
+
+      memberSelect.innerHTML = `<option value="ALL">All Team Members</option>` +
+        memberNames.map(m => `<option value="${escapeHTML(m)}">${escapeHTML(m)}</option>`).join('');
+      memberSelect.value = memberNames.includes(currentVal) ? currentVal : 'ALL';
+
+      document.getElementById('filter-role').value = filterState.role;
+      document.getElementById('filter-status').value = filterState.status;
+      document.getElementById('clear-search-btn').classList.toggle('hidden', !filterState.search);
+
+      const hasAnyFilter = filterState.search || filterState.role !== 'ALL' || filterState.member !== 'ALL' || filterState.status !== 'ALL' || filterState.overdueOnly;
+      document.getElementById('clear-all-filters-btn').classList.toggle('hidden', !hasAnyFilter);
+    }
+
+    function applyMetricFilter(mode) {
+      if (uiState.workspaceMode === 'done') {
+        setWorkspaceMode('active');
+      }
+      if (mode === 'all') {
+        resetFilters();
+        return;
+      }
+      if (mode === 'overdue') {
+        filterState.overdueOnly = !filterState.overdueOnly;
+        filterState.status = 'ALL';
+      } else {
+        filterState.overdueOnly = false;
+        filterState.status = (filterState.status === mode) ? 'ALL' : mode;
+      }
+      renderWorkspace();
+    }
+
+    function handleFilterChange() {
+      filterState.search = document.getElementById('global-search').value;
+      filterState.role = document.getElementById('filter-role').value;
+      filterState.member = document.getElementById('filter-member').value;
+      filterState.status = document.getElementById('filter-status').value;
+      filterState.overdueOnly = false;
+      renderWorkspace();
+    }
+
+    function clearSearch() {
+      document.getElementById('global-search').value = '';
+      filterState.search = '';
+      renderWorkspace();
+    }
+
+    function resetFilters() {
+      filterState = { search: '', role: 'ALL', member: 'ALL', status: 'ALL', overdueOnly: false };
+      document.getElementById('global-search').value = '';
+      renderWorkspace();
+    }
+
+    /*************************************************************************
+     * 7. RENDERING ALL 6 DATABASE SECTIONS (TABLE & KANBAN BOARD)
+     *************************************************************************/
+    function renderWorkspace() {
+      closePopover();
+      updateMetricsAndFiltersUI();
+
+      const activeContainer = document.getElementById('sections-container');
+      const doneContainer = document.getElementById('done-archive-container');
+      const breadcrumbDone = document.getElementById('breadcrumb-done-badge');
+      const doneLinkLabel = document.getElementById('done-link-label');
+
+      if (uiState.workspaceMode === 'done') {
+        activeContainer.classList.add('hidden');
+        doneContainer.classList.remove('hidden');
+        breadcrumbDone.classList.remove('hidden');
+        breadcrumbDone.classList.add('inline-flex');
+        doneLinkLabel.textContent = '← Back to Active Monitoring';
+        renderDoneArchiveView();
+        return;
+      }
+
+      activeContainer.classList.remove('hidden');
+      doneContainer.classList.add('hidden');
+      breadcrumbDone.classList.add('hidden');
+      breadcrumbDone.classList.remove('inline-flex');
+      doneLinkLabel.textContent = 'Project Done';
+
+      activeContainer.innerHTML = SECTION_CONFIGS.map(sec => renderSectionHTML(sec)).join('');
+    }
+
+    function renderSectionHTML(sec) {
+      const secUI = uiState.sectionUI[sec.id] || { collapsed: false, view: 'table', sortField: null, sortDir: 'asc' };
+      const sectionRows = uiState.projects.filter(r => r.sectionId === sec.id && rowMatchesGlobalFilters(r));
+
+      let displayRows = [...sectionRows];
+      if (secUI.sortField) {
+        displayRows.sort((a, b) => {
+          const valA = (a[secUI.sortField] || '').toString().toLowerCase();
+          const valB = (b[secUI.sortField] || '').toString().toLowerCase();
+          return secUI.sortDir === 'asc' ? valA.localeCompare(valB) : valB.localeCompare(valA);
+        });
+      }
+
+      const activeView = secUI.view || 'table';
+
+      return `
+        <section id="section-${sec.id}" class="group/section">
+          <div class="flex flex-wrap items-center justify-between gap-2 mb-2">
+            <div class="flex items-center gap-1.5">
+              <button
+                onclick="toggleSectionCollapse('${sec.id}')"
+                class="p-1 rounded hover:bg-black/5 dark:hover:bg-white/10 text-[#787774] dark:text-[#9b9a97] transition"
+                title="${secUI.collapsed ? 'Expand section' : 'Collapse section'}"
+              >
+                <svg class="w-3.5 h-3.5 transition-transform duration-150 ${secUI.collapsed ? '-rotate-90' : ''}" fill="currentColor" viewBox="0 0 20 20">
+                  <path fill-rule="evenodd" d="M5.23 7.21a.75.75 0 011.06.02L10 11.168l3.71-3.938a.75.75 0 111.08 1.04l-4.25 4.5a.75.75 0 01-1.08 0l-4.25-4.5a.75.75 0 01.02-1.06z" clip-rule="evenodd" />
+                </svg>
+              </button>
+              <h2 class="text-[19px] sm:text-[21px] font-bold tracking-tight text-[#37352f] dark:text-[#e6e6e6]">
+                ${escapeHTML(sec.title)}
+              </h2>
+              <span class="ml-1.5 px-2 py-0.5 rounded-full text-[11px] font-medium bg-black/5 dark:bg-white/5 text-[#787774] dark:text-[#9b9a97]">
+                ${displayRows.length}
+              </span>
+            </div>
+
+            <div class="flex items-center gap-1.5">
+              <button
+                onclick="toggleSectionSort('${sec.id}', 'project')"
+                class="p-1.5 rounded hover:bg-black/5 dark:hover:bg-white/10 text-[#787774] dark:text-[#9b9a97] ${secUI.sortField === 'project' ? 'text-[#2383e2] dark:text-[#529cca] bg-[#2383e2]/10' : ''} transition"
+                title="Sort alphabetically by Project"
+              >
+                <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" stroke-width="1.9" viewBox="0 0 24 24">
+                  <path d="M7 15l5 5 5-5M7 9l5-5 5 5"></path>
+                </svg>
+              </button>
+
+              <div class="inline-flex items-center rounded-[5px] bg-[#2383e2] hover:bg-[#1b6ec2] text-white text-xs font-medium shadow-xs overflow-hidden">
+                <button onclick="addNewRow('${sec.id}')" class="px-2.5 py-1 flex items-center gap-1 transition">
+                  <span>New</span>
+                </button>
+                <button onclick="addNewRow('${sec.id}', true)" class="px-1.5 py-1 border-l border-white/20 hover:bg-black/15 transition" title="Add & Open Detail Drawer">
+                  <svg class="w-3 h-3" fill="none" stroke="currentColor" stroke-width="2.2" viewBox="0 0 24 24">
+                    <path d="M6 9l6 6 6-6"></path>
+                  </svg>
+                </button>
+              </div>
+            </div>
+          </div>
+
+          ${!secUI.collapsed ? `
+            <div class="flex items-center justify-between border-b border-[#e9e9e7] dark:border-[#2f2f2f] mb-0 text-xs">
+              <div class="flex items-center gap-1">
+                <button
+                  onclick="setSectionView('${sec.id}', 'table')"
+                  class="px-2.5 py-1.5 font-medium inline-flex items-center gap-1.5 border-b-2 transition ${activeView === 'table' ? 'border-[#37352f] dark:border-[#e6e6e6] text-[#37352f] dark:text-[#e6e6e6]' : 'border-transparent text-[#787774] dark:text-[#9b9a97] hover:text-[#37352f] dark:hover:text-[#e6e6e6]'}"
+                >
+                  <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24">
+                    <rect x="3" y="3" width="18" height="18" rx="2"></rect>
+                    <path d="M3 9h18M9 9v12"></path>
+                  </svg>
+                  <span>Table</span>
+                </button>
+
+                <button
+                  onclick="setSectionView('${sec.id}', 'board')"
+                  class="px-2.5 py-1.5 font-medium inline-flex items-center gap-1.5 border-b-2 transition ${activeView === 'board' ? 'border-[#37352f] dark:border-[#e6e6e6] text-[#37352f] dark:text-[#e6e6e6]' : 'border-transparent text-[#787774] dark:text-[#9b9a97] hover:text-[#37352f] dark:hover:text-[#e6e6e6]'}"
+                >
+                  <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24">
+                    <rect x="3" y="3" width="5" height="18" rx="1"></rect>
+                    <rect x="10" y="3" width="5" height="12" rx="1"></rect>
+                    <rect x="17" y="3" width="5" height="15" rx="1"></rect>
+                  </svg>
+                  <span>Board</span>
+                </button>
+              </div>
+            </div>
+
+            ${activeView === 'table' ? renderSectionTable(sec, displayRows) : renderSectionBoard(sec, displayRows)}
+          ` : ''}
+        </section>
+      `;
+    }
+
+    function renderSectionTable(sec, rows) {
+      const headerCells = sec.columns.map((col) => {
+        const widthClass = col.key === 'project'
+          ? 'min-w-[215px] w-[240px] sticky left-0 z-10 bg-white dark:bg-[#191919]'
+          : col.key === 'note'
+            ? 'min-w-[170px]'
+            : col.key === 'time' || col.key === 'timeline'
+              ? 'min-w-[145px]'
+              : 'min-w-[135px]';
+
+        return `
+          <th class="py-2 px-2.5 text-left font-normal text-[12px] text-[#787774] dark:text-[#9b9a97] border-b border-r last:border-r-0 border-[#e9e9e7] dark:border-[#2f2f2f] select-none ${widthClass}">
+            <div class="flex items-center gap-1.5">
+              ${getColumnIconSVG(col.icon)}
+              <span class="truncate">${escapeHTML(col.label)}</span>
+            </div>
+          </th>
+        `;
+      }).join('');
+
+      const bodyRows = rows.length === 0
+        ? `<tr>
+            <td colspan="${sec.columns.length}" class="py-5 px-3 text-center text-xs text-[#787774] dark:text-[#9b9a97] border-b border-[#e9e9e7] dark:border-[#2f2f2f]">
+              Tidak ada proyek yang sesuai filter pada bagian ini.
+            </td>
+          </tr>`
+        : rows.map(row => renderTableRow(sec, row)).join('');
+
+      return `
+        <div class="w-full overflow-x-auto">
+          <table class="w-full border-collapse text-[13.5px]">
+            <thead>
+              <tr>${headerCells}</tr>
+            </thead>
+            <tbody>
+              ${bodyRows}
+            </tbody>
+          </table>
+        </div>
+        <button
+          onclick="addNewRow('${sec.id}')"
+          class="w-full py-1.5 px-2.5 text-left text-[13px] text-[#787774] dark:text-[#9b9a97] hover:bg-black/[0.03] dark:hover:bg-white/[0.03] border-b border-[#e9e9e7] dark:border-[#2f2f2f] flex items-center gap-1.5 transition"
+        >
+          <span class="text-base leading-none">+</span>
+          <span>New page</span>
+        </button>
+      `;
+    }
+
+    function renderTableRow(sec, row) {
+      const cells = sec.columns.map(col => {
+        const val = row[col.key] || '';
+
+        if (col.key === 'project') {
+          return `
+            <td class="py-1.5 px-2.5 border-b border-r border-[#e9e9e7] dark:border-[#2f2f2f] sticky left-0 z-10 bg-white dark:bg-[#191919] group-hover/row:bg-[#f7f7f5] dark:group-hover/row:bg-[#222222] transition-colors">
+              <div class="flex items-center justify-between gap-2 min-h-[26px]">
+                <div
+                  onclick="startInlineTextEdit(event, '${row.id}', 'project')"
+                  class="flex items-center gap-2 min-w-0 flex-1 cursor-text py-0.5 rounded"
+                  title="Klik untuk edit nama proyek"
+                >
+                  ${getRowDocIconSVG()}
+                  <span class="font-medium text-[#37352f] dark:text-[#e6e6e6] truncate">
+                    ${val ? escapeHTML(val) : '<span class="italic text-[#9b9a97]">Untitled Project</span>'}
+                  </span>
+                </div>
+
+                <button
+                  onclick="openDrawer('${row.id}')"
+                  class="row-open-btn shrink-0 inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] font-semibold tracking-wider uppercase bg-white dark:bg-[#262626] hover:bg-[#2383e2] hover:text-white dark:hover:bg-[#2383e2] text-[#787774] dark:text-[#9b9a97] border border-[#e9e9e7] dark:border-[#3a3a3a] shadow-xs"
+                  title="Open project details"
+                >
+                  <svg class="w-2.5 h-2.5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                    <rect x="3" y="3" width="18" height="18" rx="2"></rect>
+                    <path d="M9 3v18"></path>
+                  </svg>
+                  <span>OPEN</span>
+                </button>
+              </div>
+            </td>
+          `;
+        }
+
+        if (col.type === 'person') {
+          return `
+            <td
+              onclick="openPersonPopover(event, '${sec.id}', '${row.id}', '${col.key}', '${col.targetRole || 'ALL'}')"
+              class="py-1.5 px-2.5 border-b border-r last:border-r-0 border-[#e9e9e7] dark:border-[#2f2f2f] cursor-pointer hover:bg-black/[0.04] dark:hover:bg-white/[0.04] transition-colors"
+              title="Klik untuk pilih atau tambah ${escapeHTML(col.label)}"
+            >
+              ${renderPersonChip(val)}
+            </td>
+          `;
+        }
+
+        if (col.type === 'status') {
+          return `
+            <td
+              onclick="openStatusPopover(event, '${row.id}')"
+              class="py-1.5 px-2.5 border-b border-r last:border-r-0 border-[#e9e9e7] dark:border-[#2f2f2f] cursor-pointer hover:bg-black/[0.04] dark:hover:bg-white/[0.04] transition-colors"
+              title="Klik untuk ubah Status"
+            >
+              ${renderStatusPill(val)}
+            </td>
+          `;
+        }
+
+        if (col.type === 'date' || col.type === 'deadline') {
+          const alertState = col.type === 'deadline' ? getDeadlineAlertState(val, row.status) : null;
+          const alertBadge = alertState === 'overdue'
+            ? `<span class="ml-1.5 inline-flex items-center px-1.5 py-0.2 rounded text-[10px] font-medium bg-red-500/15 text-red-500 dark:text-red-400">Overdue</span>`
+            : alertState === 'due-today'
+              ? `<span class="ml-1.5 inline-flex items-center px-1.5 py-0.2 rounded text-[10px] font-medium bg-amber-500/15 text-amber-500 dark:text-amber-400">Today</span>`
+              : '';
+
+          return `
+            <td
+              onclick="openDatePopover(event, '${row.id}', '${col.key}', '${escapeHTML(col.label)}')"
+              class="py-1.5 px-2.5 border-b border-r last:border-r-0 border-[#e9e9e7] dark:border-[#2f2f2f] cursor-pointer hover:bg-black/[0.04] dark:hover:bg-white/[0.04] transition-colors whitespace-nowrap"
+              title="Klik untuk atur ${escapeHTML(col.label)}"
+            >
+              <div class="flex items-center">
+                <span class="text-[13px] ${val ? 'text-[#37352f] dark:text-[#e6e6e6]' : 'text-[#787774]/30 dark:text-[#9b9a97]/25'}">
+                  ${val ? escapeHTML(val) : '—'}
+                </span>
+                ${alertBadge}
+              </div>
+            </td>
+          `;
+        }
+
+        return `
+          <td
+            onclick="startInlineTextEdit(event, '${row.id}', '${col.key}')"
+            class="py-1.5 px-2.5 border-b border-r last:border-r-0 border-[#e9e9e7] dark:border-[#2f2f2f] cursor-text hover:bg-black/[0.04] dark:hover:bg-white/[0.04] transition-colors"
+            title="Klik untuk tulis catatan"
+          >
+            <div class="text-[13px] truncate max-w-[240px] ${val ? 'text-[#37352f] dark:text-[#e6e6e6]' : 'text-[#787774]/30 dark:text-[#9b9a97]/25'}">
+              ${val ? escapeHTML(val) : '—'}
+            </div>
+          </td>
+        `;
+      }).join('');
+
+      return `
+        <tr class="notion-row group/row hover:bg-[#f7f7f5] dark:hover:bg-[#222222] transition-colors">
+          ${cells}
+        </tr>
+      `;
+    }
+
+    /*************************************************************************
+     * 8. KANBAN BOARD VIEW & PROJECT DONE ARCHIVE
+     *************************************************************************/
+    function renderSectionBoard(sec, rows) {
+      const lanes = ['Not started', 'In progress', 'Revision', 'Done'];
+
+      const laneHTML = lanes.map(statusName => {
+        const cards = rows.filter(r => (r.status || 'Not started') === statusName);
+
+        const cardsMarkup = cards.map(card => {
+          const leadPerson = card.architect || card.arsitek || card.estimator || '';
+          const timeRange = card.time || card.timeline || card.date || '';
+          const alertState = getDeadlineAlertState(card.deadline, card.status);
+
+          return `
+            <div
+              draggable="true"
+              ondragstart="handleCardDragStart(event, '${sec.id}', '${card.id}')"
+              onclick="openDrawer('${card.id}')"
+              class="p-3 rounded-lg bg-white dark:bg-[#252525] hover:bg-[#f7f7f5] dark:hover:bg-[#2c2c2c] border border-[#e9e9e7] dark:border-[#343434] shadow-xs cursor-pointer transition space-y-2"
+            >
+              <div class="flex items-start justify-between gap-2">
+                <div class="flex items-center gap-1.5 font-medium text-[13.5px] text-[#37352f] dark:text-[#e6e6e6] leading-snug">
+                  ${getRowDocIconSVG()}
+                  <span>${escapeHTML(card.project || 'Untitled')}</span>
+                </div>
+              </div>
+
+              ${card.note ? `<p class="text-xs text-[#787774] dark:text-[#9b9a97] line-clamp-2">${escapeHTML(card.note)}</p>` : ''}
+
+              <div class="flex flex-wrap items-center justify-between gap-2 pt-1">
+                <div>${leadPerson ? renderPersonChip(leadPerson) : ''}</div>
+                ${card.deadline ? `
+                  <span class="text-[11px] px-1.5 py-0.5 rounded ${alertState ? 'bg-red-500/15 text-red-400 font-medium' : 'bg-black/5 dark:bg-white/5 text-[#787774] dark:text-[#9b9a97]'}">
+                    Due ${escapeHTML(card.deadline)}
+                  </span>
+                ` : (timeRange ? `<span class="text-[11px] text-[#787774] dark:text-[#9b9a97]">${escapeHTML(timeRange)}</span>` : '')}
+              </div>
+            </div>
+          `;
+        }).join('');
+
+        return `
+          <div
+            ondragover="event.preventDefault()"
+            ondrop="handleCardDrop(event, '${sec.id}', '${statusName}')"
+            class="min-w-[250px] flex-1 rounded-lg bg-[#fbfbfa] dark:bg-[#1e1e1e] border border-[#e9e9e7] dark:border-[#2c2c2c] p-2.5 flex flex-col gap-2"
+          >
+            <div class="flex items-center justify-between px-1 mb-0.5">
+              <div class="flex items-center gap-2">
+                ${renderStatusPill(statusName)}
+                <span class="text-xs text-[#787774] dark:text-[#9b9a97] font-medium">${cards.length}</span>
+              </div>
+              <button onclick="addNewRowWithStatus('${sec.id}', '${statusName}')" class="text-[#787774] dark:text-[#9b9a97] hover:text-white text-sm px-1 rounded" title="Add card">+</button>
+            </div>
+
+            <div class="space-y-2 min-h-[60px]">
+              ${cardsMarkup}
+            </div>
+
+            <button
+              onclick="addNewRowWithStatus('${sec.id}', '${statusName}')"
+              class="w-full py-1.5 px-2 text-left text-xs text-[#787774] dark:text-[#9b9a97] hover:bg-black/5 dark:hover:bg-white/5 rounded transition"
+            >
+              + New
+            </button>
+          </div>
+        `;
+      }).join('');
+
+      return `
+        <div class="pt-3 overflow-x-auto">
+          <div class="flex gap-3 min-w-max pb-2">
+            ${laneHTML}
+          </div>
+        </div>
+      `;
+    }
+
+    let draggedCardInfo = null;
+    function handleCardDragStart(event, sectionId, rowId) {
+      draggedCardInfo = { sectionId, rowId };
+      event.dataTransfer.effectAllowed = 'move';
+    }
+
+    async function handleCardDrop(event, targetSectionId, newStatus) {
+      event.preventDefault();
+      if (!draggedCardInfo) return;
+      const { sectionId, rowId } = draggedCardInfo;
+      draggedCardInfo = null;
+
+      if (sectionId !== targetSectionId) {
+        showToast('Gunakan tombol OPEN pada kartu untuk memindahkan antar board');
+        return;
+      }
+
+      await updateProjectFields(rowId, { status: newStatus });
+      showToast(`Status diubah ke "${newStatus}"`);
+    }
+
+    function renderDoneArchiveView() {
+      const doneContainer = document.getElementById('done-archive-container');
+      const doneProjects = uiState.projects.filter(r => r.sectionId === 'done-archive' || r.status === 'Done');
+
+      doneContainer.innerHTML = `
+        <div class="flex flex-wrap items-center justify-between gap-3 pb-3 border-b border-[#e9e9e7] dark:border-[#2f2f2f]">
+          <div>
+            <h2 class="text-xl font-bold text-[#37352f] dark:text-[#e6e6e6] flex items-center gap-2">
+              <span>Project Done Archive</span>
+              <span class="px-2 py-0.5 rounded-full text-xs bg-emerald-500/15 text-emerald-500 dark:text-emerald-400">${doneProjects.length}</span>
+            </h2>
+            <p class="text-xs text-[#787774] dark:text-[#9b9a97] mt-0.5">
+              Daftar proyek dengan status <strong>Done</strong> atau yang telah dipindahkan ke arsip selesai.
+            </p>
+          </div>
+          <button onclick="setWorkspaceMode('active')" class="px-3 py-1.5 rounded-md text-xs font-medium bg-[#2383e2] hover:bg-[#1b6ec2] text-white transition">
+            ← Kembali ke Daily Monitoring
+          </button>
+        </div>
+
+        ${doneProjects.length === 0 ? `
+          <div class="py-12 text-center rounded-xl border border-dashed border-[#e9e9e7] dark:border-[#2f2f2f] text-sm text-[#787774] dark:text-[#9b9a97]">
+            Belum ada proyek yang berstatus <strong>Done</strong>. Ubah status proyek ke <strong>Done</strong> atau pindahkan melalui menu <strong>OPEN</strong>.
+          </div>
+        ` : `
+          <div class="overflow-x-auto rounded-lg border border-[#e9e9e7] dark:border-[#2f2f2f]">
+            <table class="w-full border-collapse text-[13.5px]">
+              <thead class="bg-[#fbfbfa] dark:bg-[#202020]">
+                <tr>
+                  <th class="py-2 px-3 text-left text-xs font-normal text-[#787774] dark:text-[#9b9a97] border-b border-r border-[#e9e9e7] dark:border-[#2f2f2f]">Project</th>
+                  <th class="py-2 px-3 text-left text-xs font-normal text-[#787774] dark:text-[#9b9a97] border-b border-r border-[#e9e9e7] dark:border-[#2f2f2f]">Board Origin</th>
+                  <th class="py-2 px-3 text-left text-xs font-normal text-[#787774] dark:text-[#9b9a97] border-b border-r border-[#e9e9e7] dark:border-[#2f2f2f]">PIC (Arsitek / Estimator)</th>
+                  <th class="py-2 px-3 text-left text-xs font-normal text-[#787774] dark:text-[#9b9a97] border-b border-r border-[#e9e9e7] dark:border-[#2f2f2f]">Marketing</th>
+                  <th class="py-2 px-3 text-left text-xs font-normal text-[#787774] dark:text-[#9b9a97] border-b border-r border-[#e9e9e7] dark:border-[#2f2f2f]">Status</th>
+                  <th class="py-2 px-3 text-left text-xs font-normal text-[#787774] dark:text-[#9b9a97] border-b border-[#e9e9e7] dark:border-[#2f2f2f]">Action</th>
+                </tr>
+              </thead>
+              <tbody>
+                ${doneProjects.map(item => {
+                  const pic = item.architect || item.arsitek || item.estimator || '';
+                  const originSec = SECTION_CONFIGS.find(s => s.id === (item.previousSectionId || item.sectionId));
+                  return `
+                    <tr class="hover:bg-[#f7f7f5] dark:hover:bg-[#222222]">
+                      <td class="py-2 px-3 border-b border-r border-[#e9e9e7] dark:border-[#2f2f2f] font-medium">
+                        <div class="flex items-center gap-2">
+                          ${getRowDocIconSVG()}
+                          <span>${escapeHTML(item.project)}</span>
+                        </div>
+                      </td>
+                      <td class="py-2 px-3 border-b border-r border-[#e9e9e7] dark:border-[#2f2f2f] text-xs text-[#787774] dark:text-[#9b9a97]">
+                        ${escapeHTML(originSec ? originSec.title : 'Project Done')}
+                      </td>
+                      <td class="py-2 px-3 border-b border-r border-[#e9e9e7] dark:border-[#2f2f2f]">
+                        ${renderPersonChip(pic)}
+                      </td>
+                      <td class="py-2 px-3 border-b border-r border-[#e9e9e7] dark:border-[#2f2f2f]">
+                        ${renderPersonChip(item.marketing)}
+                      </td>
+                      <td class="py-2 px-3 border-b border-r border-[#e9e9e7] dark:border-[#2f2f2f]">
+                        ${renderStatusPill('Done')}
+                      </td>
+                      <td class="py-2 px-3 border-b border-[#e9e9e7] dark:border-[#2f2f2f]">
+                        <button
+                          onclick="reopenDoneProject('${item.id}')"
+                          class="px-2 py-1 rounded text-xs bg-black/5 dark:bg-white/10 hover:bg-[#2383e2] hover:text-white transition"
+                        >
+                          Reopen
+                        </button>
+                      </td>
+                    </tr>
+                  `;
+                }).join('')}
+              </tbody>
+            </table>
+          </div>
+        `}
+      `;
+    }
+
+    async function reopenDoneProject(rowId) {
+      const row = uiState.projects.find(r => r.id === rowId);
+      if (!row) return;
+      const targetSecId = row.sectionId === 'done-archive'
+        ? (row.previousSectionId || 'drawing-process')
+        : row.sectionId;
+
+      await updateProjectFields(rowId, {
+        sectionId: targetSecId,
+        status: 'In progress'
+      });
+      showToast('Proyek dikembalikan ke status In progress');
+    }
+
+    /*************************************************************************
+     * 9. FIRESTORE PROJECT CRUD & INLINE POPOVER CONTROLS
+     *************************************************************************/
+    async function updateProjectFields(rowId, updates) {
+      if (!currentUser || !db) return;
+
+      // Harmonize architect/arsitek & time/timeline fields across boards
+      const syncedUpdates = { ...updates };
+      if ('architect' in syncedUpdates) syncedUpdates.arsitek = syncedUpdates.architect;
+      if ('arsitek' in syncedUpdates) syncedUpdates.architect = syncedUpdates.arsitek;
+      if ('time' in syncedUpdates) syncedUpdates.timeline = syncedUpdates.time;
+      if ('timeline' in syncedUpdates) syncedUpdates.time = syncedUpdates.timeline;
+
+      try {
+        await updateDoc(doc(getProjectsCol(), rowId), syncedUpdates);
+      } catch (err) {
+        console.error('Error updating project:', err);
+        showToast('Gagal menyimpan perubahan');
+      }
+    }
+
+    function startInlineTextEdit(event, rowId, fieldKey) {
+      event.stopPropagation();
+      closePopover();
+
+      const cell = event.currentTarget;
+      if (cell.querySelector('input')) return;
+
+      const row = uiState.projects.find(r => r.id === rowId);
+      if (!row) return;
+
+      const currentVal = row[fieldKey] || '';
+      const originalHTML = cell.innerHTML;
+
+      const input = document.createElement('input');
+      input.type = 'text';
+      input.value = currentVal;
+      input.placeholder = fieldKey === 'project' ? 'Nama proyek...' : 'Tulis catatan...';
+      input.className = 'w-full px-1.5 py-0.5 text-[13px] rounded bg-white dark:bg-[#191919] text-[#37352f] dark:text-[#e6e6e6] border border-[#2383e2] focus:outline-none';
+
+      cell.innerHTML = '';
+      cell.appendChild(input);
+      input.focus();
+      input.select();
+
+      let committed = false;
+      const commit = async () => {
+        if (committed) return;
+        committed = true;
+        const newVal = input.value.trim();
+        const finalVal = fieldKey === 'project' && !newVal ? 'Untitled Project' : newVal;
+        await updateProjectFields(rowId, { [fieldKey]: finalVal });
+      };
+
+      input.addEventListener('blur', commit);
+      input.addEventListener('keydown', (e) => {
+        if (e.key === 'Enter') {
+          e.preventDefault();
+          commit();
+        } else if (e.key === 'Escape') {
+          committed = true;
+          cell.innerHTML = originalHTML;
+        }
+      });
+    }
+
+    function positionPopover(anchorEl) {
+      const pop = document.getElementById('floating-popover');
+      pop.classList.remove('hidden');
+
+      const rect = anchorEl.getBoundingClientRect();
+      const popWidth = 272;
+      const popHeight = pop.offsetHeight || 280;
+
+      let left = rect.left;
+      let top = rect.bottom + 4;
+
+      if (left + popWidth > window.innerWidth - 12) {
+        left = Math.max(12, window.innerWidth - popWidth - 12);
+      }
+      if (top + popHeight > window.innerHeight - 12) {
+        top = Math.max(12, rect.top - popHeight - 4);
+      }
+
+      pop.style.left = `${left}px`;
+      pop.style.top = `${top}px`;
+    }
+
+    function closePopover() {
+      const pop = document.getElementById('floating-popover');
+      if (pop) pop.classList.add('hidden');
+      activePopoverContext = null;
+    }
+
+    // Status Dropdown Popover
+    function openStatusPopover(event, rowId) {
+      event.stopPropagation();
+      const pop = document.getElementById('floating-popover');
+      activePopoverContext = { type: 'status', rowId };
+
+      pop.innerHTML = `
+        <div class="p-1.5">
+          <div class="px-2 py-1 text-[11px] font-medium text-[#787774] dark:text-[#9b9a97]">Select Status</div>
+          <div class="space-y-0.5 mt-0.5">
+            ${STATUS_OPTIONS.map(st => `
+              <button
+                onclick="selectRowStatus('${rowId}', '${st.value}')"
+                class="w-full px-2 py-1.5 rounded text-left hover:bg-black/5 dark:hover:bg-white/10 flex items-center justify-between transition"
+              >
+                ${renderStatusPill(st.value)}
+              </button>
+            `).join('')}
+          </div>
+        </div>
+      `;
+      positionPopover(event.currentTarget);
+    }
+
+    async function selectRowStatus(rowId, newStatus) {
+      closePopover();
+      const row = uiState.projects.find(r => r.id === rowId);
+      await updateProjectFields(rowId, { status: newStatus });
+      if (newStatus === 'Done' && row) {
+        showToast(`"${row.project}" ditandai Done (tersedia di Project Done)`);
+      }
+    }
+
+    // Role-Grouped Searchable Person Picker Popover (with + Tambah Member Baru)
+    function openPersonPopover(event, sectionId, rowId, fieldKey, targetRole = 'ALL', showAllOverride = false) {
+      event.stopPropagation();
+      const pop = document.getElementById('floating-popover');
+      activePopoverContext = { type: 'person', sectionId, rowId, fieldKey, targetRole, showAllOverride };
+
+      const primaryMembers = targetRole === 'ALL'
+        ? uiState.teamMembers
+        : uiState.teamMembers.filter(m => m.role === targetRole);
+      const otherMembers = targetRole === 'ALL'
+        ? []
+        : uiState.teamMembers.filter(m => m.role !== targetRole);
+
+      const renderMemberOption = (m) => `
+        <button
+          data-member="${escapeHTML(m.name.toLowerCase())}"
+          data-role="${escapeHTML(m.role)}"
+          onclick="selectRowPerson('${rowId}', '${fieldKey}', '${escapeHTML(m.name)}')"
+          class="popover-member-btn w-full px-2 py-1.5 rounded text-left hover:bg-black/5 dark:hover:bg-white/10 flex items-center justify-between gap-2 transition"
+        >
+          ${renderPersonChip(m.name)}
+          <span class="text-[10px] px-1.5 py-0.2 rounded bg-black/5 dark:bg-white/5 text-[#787774] dark:text-[#9b9a97] shrink-0">${escapeHTML(m.role)}</span>
+        </button>
+      `;
+
+      const suggestedDefaultRole = targetRole === 'ALL' ? 'Architect' : targetRole;
+
+      pop.innerHTML = `
+        <div class="p-2 space-y-2" onclick="event.stopPropagation()">
+          <input
+            id="popover-person-input"
+            type="text"
+            placeholder="Cari nama member..."
+            oninput="filterPopoverMembers(this.value)"
+            class="w-full px-2.5 py-1.5 text-xs rounded bg-[#fbfbfa] dark:bg-[#191919] border border-[#e9e9e7] dark:border-[#3a3a3a] focus:outline-none focus:border-[#2383e2]"
+          />
+
+          ${targetRole !== 'ALL' ? `
+            <div class="flex items-center justify-between px-1 text-[10px] text-[#787774] dark:text-[#9b9a97]">
+              <span>Divisi: <strong class="text-[#37352f] dark:text-[#e6e6e6]">${escapeHTML(targetRole)}</strong></span>
+              <button
+                type="button"
+                id="popover-toggle-all-btn"
+                onclick="togglePopoverShowAllMembers()"
+                class="text-[#2383e2] dark:text-[#529cca] hover:underline font-medium"
+              >
+                Show All (${uiState.teamMembers.length})
+              </button>
+            </div>
+          ` : ''}
+
+          <div id="popover-member-list" class="max-h-48 overflow-y-auto space-y-0.5">
+            ${primaryMembers.map(renderMemberOption).join('')}
+            ${otherMembers.length > 0 ? `
+              <div id="popover-other-members-group" class="hidden pt-1 mt-1 border-t border-[#e9e9e7] dark:border-[#343434]">
+                <div class="px-2 py-0.5 text-[10px] uppercase tracking-wider text-[#787774] dark:text-[#9b9a97]">Divisi Lainnya</div>
+                ${otherMembers.map(renderMemberOption).join('')}
+              </div>
+            ` : ''}
+          </div>
+
+          <div class="pt-1.5 border-t border-[#e9e9e7] dark:border-[#343434] space-y-1">
+            <button
+              type="button"
+              onclick="openMembersModal('${suggestedDefaultRole}', { sectionId: '${sectionId}', rowId: '${rowId}', fieldKey: '${fieldKey}' })"
+              class="w-full px-2 py-1.5 rounded text-left text-xs font-medium text-[#2383e2] dark:text-[#529cca] hover:bg-[#2383e2]/10 flex items-center gap-1.5 transition"
+            >
+              <span>+ Tambah Member Baru</span>
+            </button>
+            <button
+              type="button"
+              onclick="selectRowPerson('${rowId}', '${fieldKey}', '')"
+              class="w-full px-2 py-1 rounded text-left text-[11px] text-[#787774] dark:text-[#9b9a97] hover:bg-black/5 dark:hover:bg-white/10"
+            >
+              ✕ Clear selection
+            </button>
+          </div>
+        </div>
+      `;
+      positionPopover(event.currentTarget);
+      setTimeout(() => document.getElementById('popover-person-input')?.focus(), 20);
+    }
+
+    function togglePopoverShowAllMembers() {
+      const otherGroup = document.getElementById('popover-other-members-group');
+      const toggleBtn = document.getElementById('popover-toggle-all-btn');
+      if (!otherGroup || !toggleBtn) return;
+      const isCurrentlyHidden = otherGroup.classList.contains('hidden');
+      otherGroup.classList.toggle('hidden', !isCurrentlyHidden);
+      toggleBtn.textContent = isCurrentlyHidden ? 'Filter Role Only' : `Show All (${uiState.teamMembers.length})`;
+    }
+
+    function filterPopoverMembers(query) {
+      const q = query.trim().toLowerCase();
+      const otherGroup = document.getElementById('popover-other-members-group');
+      if (otherGroup && q) {
+        otherGroup.classList.remove('hidden');
+      }
+      document.querySelectorAll('.popover-member-btn').forEach(btn => {
+        const name = btn.getAttribute('data-member') || '';
+        btn.classList.toggle('hidden', Boolean(q && !name.includes(q)));
+      });
+    }
+
+    async function selectRowPerson(rowId, fieldKey, personName) {
+      closePopover();
+      await updateProjectFields(rowId, { [fieldKey]: personName });
+    }
+
+    // Date / Timeline Popover
+    function openDatePopover(event, rowId, fieldKey, label) {
+      event.stopPropagation();
+      const row = uiState.projects.find(r => r.id === rowId);
+      if (!row) return;
+
+      const currentVal = row[fieldKey] || '';
+      const pop = document.getElementById('floating-popover');
+      activePopoverContext = { type: 'date', rowId, fieldKey };
+      const isRangeField = fieldKey === 'time' || fieldKey === 'timeline';
+
+      pop.innerHTML = `
+        <div class="p-2.5 space-y-2.5" onclick="event.stopPropagation()">
+          <div class="text-[11px] font-medium text-[#787774] dark:text-[#9b9a97]">Edit ${escapeHTML(label)}</div>
+          <input
+            id="popover-date-input"
+            type="text"
+            value="${escapeHTML(currentVal)}"
+            placeholder="${isRangeField ? 'Contoh: Nov 25 → Nov 28' : 'Contoh: Nov 28'}"
+            onkeydown="if(event.key==='Enter'){ applyDateValue('${rowId}', '${fieldKey}', this.value); }"
+            class="w-full px-2.5 py-1.5 text-xs rounded bg-[#fbfbfa] dark:bg-[#191919] border border-[#e9e9e7] dark:border-[#3a3a3a] focus:outline-none focus:border-[#2383e2]"
+          />
+
+          <div class="grid grid-cols-2 gap-1 text-[11px]">
+            ${isRangeField ? `
+              <button onclick="applyDateValue('${rowId}', '${fieldKey}', 'Nov 25 → Nov 27')" class="px-2 py-1 rounded bg-black/5 dark:bg-white/5 hover:bg-[#2383e2] hover:text-white text-left transition">Nov 25 → Nov 27</button>
+              <button onclick="applyDateValue('${rowId}', '${fieldKey}', 'Nov 25 → Nov 30')" class="px-2 py-1 rounded bg-black/5 dark:bg-white/5 hover:bg-[#2383e2] hover:text-white text-left transition">Nov 25 → Nov 30</button>
+            ` : `
+              <button onclick="applyDateValue('${rowId}', '${fieldKey}', 'Nov 25')" class="px-2 py-1 rounded bg-black/5 dark:bg-white/5 hover:bg-[#2383e2] hover:text-white text-left transition">Today (Nov 25)</button>
+              <button onclick="applyDateValue('${rowId}', '${fieldKey}', 'Nov 28')" class="px-2 py-1 rounded bg-black/5 dark:bg-white/5 hover:bg-[#2383e2] hover:text-white text-left transition">Nov 28</button>
+              <button onclick="applyDateValue('${rowId}', '${fieldKey}', 'Nov 30')" class="px-2 py-1 rounded bg-black/5 dark:bg-white/5 hover:bg-[#2383e2] hover:text-white text-left transition">Nov 30</button>
+              <button onclick="applyDateValue('${rowId}', '${fieldKey}', 'Dec 2')" class="px-2 py-1 rounded bg-black/5 dark:bg-white/5 hover:bg-[#2383e2] hover:text-white text-left transition">Dec 2</button>
+            `}
+          </div>
+
+          <div class="flex items-center justify-between pt-1.5 border-t border-[#e9e9e7] dark:border-[#343434]">
+            <button onclick="applyDateValue('${rowId}', '${fieldKey}', '')" class="text-[11px] text-[#787774] dark:text-[#9b9a97] hover:text-red-400">Clear</button>
+            <button onclick="applyDateValue('${rowId}', '${fieldKey}', document.getElementById('popover-date-input').value)" class="px-2.5 py-1 rounded text-xs font-medium bg-[#2383e2] text-white hover:bg-[#1b6ec2]">Apply</button>
+          </div>
+        </div>
+      `;
+      positionPopover(event.currentTarget);
+      setTimeout(() => document.getElementById('popover-date-input')?.focus(), 20);
+    }
+
+    async function applyDateValue(rowId, fieldKey, newVal) {
+      closePopover();
+      await updateProjectFields(rowId, { [fieldKey]: newVal.trim() });
+    }
+
+    /*************************************************************************
+     * 10. PROJECT DETAIL SLIDE-OVER DRAWER ('OPEN' BUTTON)
+     *************************************************************************/
+    function openDrawer(rowId) {
+      closePopover();
+      const row = uiState.projects.find(r => r.id === rowId);
+      if (!row) return;
+      const sec = SECTION_CONFIGS.find(s => s.id === row.sectionId) || SECTION_CONFIGS[0];
+
+      activeDrawerRowId = rowId;
+      deleteConfirmArmed = false;
+
+      const deleteBtn = document.getElementById('drawer-delete-btn');
+      deleteBtn.textContent = 'Delete';
+      deleteBtn.className = 'px-2.5 py-1 rounded text-xs font-medium text-red-500 dark:text-red-400 hover:bg-red-500/10 transition';
+
+      document.getElementById('drawer-breadcrumb').textContent = `${sec.title} / ${row.project || 'Untitled'}`;
+      renderDrawerBody(sec, row);
+
+      document.getElementById('drawer-backdrop').classList.remove('hidden');
+      const drawer = document.getElementById('project-drawer');
+      drawer.classList.remove('drawer-exit');
+      drawer.classList.add('drawer-enter');
+    }
+
+    function closeDrawer() {
+      const drawer = document.getElementById('project-drawer');
+      drawer.classList.remove('drawer-enter');
+      drawer.classList.add('drawer-exit');
+      document.getElementById('drawer-backdrop').classList.add('hidden');
+      activeDrawerRowId = null;
+      deleteConfirmArmed = false;
+    }
+
+    function renderDrawerBody(sec, row) {
+      const body = document.getElementById('drawer-body');
+      const propColumns = sec.columns.filter(c => c.key !== 'project');
+
+      const stageOptions = SECTION_CONFIGS.map(s => `
+        <option value="${s.id}" ${s.id === row.sectionId ? 'selected' : ''}>${escapeHTML(s.title)}</option>
+      `).join('') + `<option value="__DONE__" ${row.sectionId === 'done-archive' ? 'selected' : ''}>Project Done (Archive)</option>`;
+
+      const propRowsHTML = propColumns.map(col => {
+        const val = row[col.key] || '';
+
+        if (col.type === 'person') {
+          const matchingMembers = uiState.teamMembers.filter(m => !col.targetRole || m.role === col.targetRole);
+          const otherMembers = uiState.teamMembers.filter(m => col.targetRole && m.role !== col.targetRole);
+
+          return `
+            <div class="grid grid-cols-12 items-center py-2 border-b border-[#e9e9e7]/60 dark:border-[#2a2a2a] text-xs">
+              <div class="col-span-4 flex items-center gap-2 text-[#787774] dark:text-[#9b9a97]">
+                ${getColumnIconSVG(col.icon)}
+                <span>${escapeHTML(col.label)}</span>
+              </div>
+              <div class="col-span-8">
+                <select
+                  onchange="updateDrawerField('${row.id}', '${col.key}', this.value)"
+                  class="w-full px-2.5 py-1.5 rounded bg-[#fbfbfa] dark:bg-[#191919] border border-[#e9e9e7] dark:border-[#2f2f2f] text-[#37352f] dark:text-[#e6e6e6] focus:outline-none focus:border-[#2383e2]"
+                >
+                  <option value="">— Belum ditugaskan —</option>
+                  <optgroup label="${escapeHTML(col.targetRole || 'Team')}">
+                    ${matchingMembers.map(m => `<option value="${escapeHTML(m.name)}" ${val === m.name ? 'selected' : ''}>${escapeHTML(m.name)}</option>`).join('')}
+                  </optgroup>
+                  ${otherMembers.length > 0 ? `
+                    <optgroup label="Divisi Lainnya">
+                      ${otherMembers.map(m => `<option value="${escapeHTML(m.name)}" ${val === m.name ? 'selected' : ''}>${escapeHTML(m.name)} (${escapeHTML(m.role)})</option>`).join('')}
+                    </optgroup>
+                  ` : ''}
+                </select>
+              </div>
+            </div>
+          `;
+        }
+
+        if (col.type === 'status') {
+          return `
+            <div class="grid grid-cols-12 items-center py-2 border-b border-[#e9e9e7]/60 dark:border-[#2a2a2a] text-xs">
+              <div class="col-span-4 flex items-center gap-2 text-[#787774] dark:text-[#9b9a97]">
+                ${getColumnIconSVG(col.icon)}
+                <span>${escapeHTML(col.label)}</span>
+              </div>
+              <div class="col-span-8 flex flex-wrap gap-1.5">
+                ${STATUS_OPTIONS.map(st => `
+                  <button
+                    type="button"
+                    onclick="updateDrawerField('${row.id}', 'status', '${st.value}', true)"
+                    class="rounded-full transition ${val === st.value ? 'ring-2 ring-[#2383e2] scale-105' : 'opacity-65 hover:opacity-100'}"
+                  >
+                    ${renderStatusPill(st.value)}
+                  </button>
+                `).join('')}
+              </div>
+            </div>
+          `;
+        }
+
+        return `
+          <div class="grid grid-cols-12 items-center py-2 border-b border-[#e9e9e7]/60 dark:border-[#2a2a2a] text-xs">
+            <div class="col-span-4 flex items-center gap-2 text-[#787774] dark:text-[#9b9a97]">
+              ${getColumnIconSVG(col.icon)}
+              <span>${escapeHTML(col.label)}</span>
+            </div>
+            <div class="col-span-8">
+              <input
+                type="text"
+                value="${escapeHTML(val)}"
+                placeholder="${col.type === 'date' || col.type === 'deadline' ? 'Contoh: Nov 25 → Nov 28' : 'Kosong...'}"
+                onchange="updateDrawerField('${row.id}', '${col.key}', this.value)"
+                class="w-full px-2.5 py-1.5 rounded bg-[#fbfbfa] dark:bg-[#191919] border border-[#e9e9e7] dark:border-[#2f2f2f] text-[#37352f] dark:text-[#e6e6e6] focus:outline-none focus:border-[#2383e2]"
+              />
+            </div>
+          </div>
+        `;
+      }).join('');
+
+      body.innerHTML = `
+        <div>
+          <label class="block text-[11px] uppercase tracking-wider text-[#787774] dark:text-[#9b9a97] mb-1">Project Name</label>
+          <input
+            type="text"
+            value="${escapeHTML(row.project)}"
+            onchange="updateDrawerField('${row.id}', 'project', this.value)"
+            class="w-full text-2xl font-bold bg-transparent text-[#37352f] dark:text-[#e6e6e6] border-b border-transparent focus:border-[#2383e2] pb-1 focus:outline-none"
+          />
+        </div>
+
+        <div class="p-3 rounded-lg bg-[#fbfbfa] dark:bg-[#191919] border border-[#e9e9e7] dark:border-[#2f2f2f] flex flex-wrap items-center justify-between gap-2">
+          <div class="text-xs">
+            <div class="font-medium text-[#37352f] dark:text-[#e6e6e6]">Stage / Board Location</div>
+            <div class="text-[11px] text-[#787774] dark:text-[#9b9a97]">Pindahkan proyek ke tahap berikutnya</div>
+          </div>
+          <select
+            onchange="transferProjectToBoard('${row.id}', this.value)"
+            class="px-2.5 py-1.5 text-xs rounded-md bg-white dark:bg-[#252525] border border-[#e9e9e7] dark:border-[#3a3a3a] text-[#37352f] dark:text-[#e6e6e6] font-medium focus:outline-none focus:border-[#2383e2]"
+          >
+            ${stageOptions}
+          </select>
+        </div>
+
+        <div>
+          <div class="flex items-center justify-between mb-1">
+            <span class="text-[11px] uppercase tracking-wider text-[#787774] dark:text-[#9b9a97]">Properties</span>
+            <button type="button" onclick="openMembersModal()" class="text-[11px] text-[#2383e2] dark:text-[#529cca] hover:underline">+ Kelola Member</button>
+          </div>
+          <div class="border-t border-[#e9e9e7]/60 dark:border-[#2a2a2a]">
+            ${propRowsHTML}
+          </div>
+        </div>
+
+        <div>
+          <label class="block text-[11px] uppercase tracking-wider text-[#787774] dark:text-[#9b9a97] mb-1.5">Detailed Notes & Brief</label>
+          <textarea
+            rows="4"
+            placeholder="Tambahkan catatan revisi, link referensi gambar, atau progres lapangan..."
+            onchange="updateDrawerField('${row.id}', 'note', this.value)"
+            class="w-full p-3 text-xs rounded-lg bg-[#fbfbfa] dark:bg-[#191919] border border-[#e9e9e7] dark:border-[#2f2f2f] text-[#37352f] dark:text-[#e6e6e6] focus:outline-none focus:border-[#2383e2] leading-relaxed"
+          >${escapeHTML(row.note || '')}</textarea>
+        </div>
+      `;
+    }
+
+    async function updateDrawerField(rowId, key, value, rerenderDrawer = false) {
+      await updateProjectFields(rowId, { [key]: value });
+      const updated = uiState.projects.find(r => r.id === rowId);
+      if (updated) {
+        const sec = SECTION_CONFIGS.find(s => s.id === updated.sectionId) || SECTION_CONFIGS[0];
+        if (key === 'project') {
+          document.getElementById('drawer-breadcrumb').textContent = `${sec.title} / ${value || 'Untitled'}`;
+        }
+        if (rerenderDrawer) {
+          renderDrawerBody(sec, updated);
+        }
+      }
+    }
+
+    async function transferProjectToBoard(rowId, targetSectionId) {
+      const row = uiState.projects.find(r => r.id === rowId);
+      if (!row || row.sectionId === targetSectionId) return;
+
+      if (targetSectionId === '__DONE__') {
+        await updateProjectFields(rowId, {
+          previousSectionId: row.sectionId,
+          sectionId: 'done-archive',
+          status: 'Done'
+        });
+        closeDrawer();
+        showToast(`"${row.project}" dipindahkan ke Project Done`);
+        return;
+      }
+
+      const toSec = SECTION_CONFIGS.find(s => s.id === targetSectionId);
+      if (!toSec) return;
+
+      const sharedArchitect = row.architect || row.arsitek || '';
+      const sharedTime = row.time || row.timeline || row.date || '';
+
+      await updateProjectFields(rowId, {
+        sectionId: targetSectionId,
+        order: Date.now(),
+        architect: sharedArchitect,
+        arsitek: sharedArchitect,
+        time: sharedTime,
+        timeline: sharedTime,
+        date: row.date || sharedTime
+      });
+
+      document.getElementById('drawer-breadcrumb').textContent = `${toSec.title} / ${row.project || 'Untitled'}`;
+      renderDrawerBody(toSec, { ...row, sectionId: targetSectionId });
+      showToast(`Dipindahkan ke "${toSec.title}"`);
+    }
+
+    async function handleDrawerDeleteClick() {
+      if (!activeDrawerRowId || !currentUser) return;
+      const btn = document.getElementById('drawer-delete-btn');
+      if (!deleteConfirmArmed) {
+        deleteConfirmArmed = true;
+        btn.textContent = 'Confirm Delete?';
+        btn.className = 'px-2.5 py-1 rounded text-xs font-semibold bg-red-600 text-white transition';
+        return;
+      }
+
+      const targetId = activeDrawerRowId;
+      closeDrawer();
+      try {
+        await deleteDoc(doc(getProjectsCol(), targetId));
+        showToast('Proyek dihapus');
+      } catch (err) {
+        showToast('Gagal menghapus proyek');
+      }
+    }
+
+    /*************************************************************************
+     * 11. SECTION ACTIONS (ADD ROW, COLLAPSE, SORT, VIEW TOGGLE)
+     *************************************************************************/
+    async function addNewRow(sectionId, openAfter = false) {
+      if (!currentUser || !db) return;
+      const sec = SECTION_CONFIGS.find(s => s.id === sectionId);
+      if (!sec) return;
+
+      uiState.sectionUI[sectionId].collapsed = false;
+
+      try {
+        const docRef = await addDoc(getProjectsCol(), {
+          sectionId,
+          order: Date.now(),
+          project: 'New Project',
+          architect: '',
+          arsitek: '',
+          estimator: '',
+          marketing: '',
+          time: '',
+          timeline: '',
+          date: '',
+          deadline: '',
+          status: 'Not started',
+          note: ''
+        });
+
+        if (openAfter) {
+          setTimeout(() => openDrawer(docRef.id), 120);
+        } else {
+          showToast(`Baris baru ditambahkan di ${sec.title}`);
+        }
+      } catch (err) {
+        showToast('Gagal menambah baris baru');
+      }
+    }
+
+    async function addNewRowWithStatus(sectionId, statusName) {
+      if (!currentUser || !db) return;
+      try {
+        const docRef = await addDoc(getProjectsCol(), {
+          sectionId,
+          order: Date.now(),
+          project: 'New Project',
+          architect: '',
+          arsitek: '',
+          estimator: '',
+          marketing: '',
+          time: '',
+          timeline: '',
+          date: '',
+          deadline: '',
+          status: statusName,
+          note: ''
+        });
+        setTimeout(() => openDrawer(docRef.id), 120);
+      } catch (err) {
+        showToast('Gagal menambah kartu baru');
+      }
+    }
+
+    function toggleSectionCollapse(sectionId) {
+      uiState.sectionUI[sectionId].collapsed = !uiState.sectionUI[sectionId].collapsed;
+      renderWorkspace();
+    }
+
+    function toggleSectionSort(sectionId, field) {
+      const secUI = uiState.sectionUI[sectionId];
+      if (secUI.sortField === field) {
+        if (secUI.sortDir === 'asc') {
+          secUI.sortDir = 'desc';
+        } else {
+          secUI.sortField = null;
+          secUI.sortDir = 'asc';
+        }
+      } else {
+        secUI.sortField = field;
+        secUI.sortDir = 'asc';
+      }
+      renderWorkspace();
+    }
+
+    function setSectionView(sectionId, viewName) {
+      uiState.sectionUI[sectionId].view = viewName;
+      renderWorkspace();
+    }
+
+    function setGlobalView(viewName) {
+      uiState.globalView = viewName;
+      SECTION_CONFIGS.forEach(s => { uiState.sectionUI[s.id].view = viewName; });
+
+      const tableBtn = document.getElementById('global-view-table');
+      const boardBtn = document.getElementById('global-view-board');
+
+      if (viewName === 'table') {
+        tableBtn.className = 'px-2.5 py-1 rounded font-medium flex items-center gap-1.5 transition bg-[#2383e2] text-white';
+        boardBtn.className = 'px-2.5 py-1 rounded font-medium flex items-center gap-1.5 transition text-[#787774] dark:text-[#9b9a97] hover:text-[#37352f] dark:hover:text-[#e6e6e6]';
+      } else {
+        boardBtn.className = 'px-2.5 py-1 rounded font-medium flex items-center gap-1.5 transition bg-[#2383e2] text-white';
+        tableBtn.className = 'px-2.5 py-1 rounded font-medium flex items-center gap-1.5 transition text-[#787774] dark:text-[#9b9a97] hover:text-[#37352f] dark:hover:text-[#e6e6e6]';
+      }
+
+      renderWorkspace();
+    }
+
+    function setWorkspaceMode(mode) {
+      uiState.workspaceMode = mode;
+      renderWorkspace();
+    }
+
+    function toggleWorkspaceMode() {
+      setWorkspaceMode(uiState.workspaceMode === 'active' ? 'done' : 'active');
+    }
+
+    /*************************************************************************
+     * 12. THEME, DRIVE MODAL, RESET MODAL & CSV EXPORT
+     *************************************************************************/
+    function toggleTheme() {
+      uiState.theme = uiState.theme === 'dark' ? 'light' : 'dark';
+      document.documentElement.classList.toggle('dark', uiState.theme === 'dark');
+    }
+
+    function openDriveModal() {
+      const modal = document.getElementById('drive-modal');
+      const input = document.getElementById('drive-url-input');
+      const extLink = document.getElementById('drive-open-external');
+      input.value = uiState.driveUrl || 'https://drive.google.com';
+      extLink.href = input.value;
+      modal.classList.remove('hidden');
+    }
+
+    function closeDriveModal() {
+      document.getElementById('drive-modal').classList.add('hidden');
+    }
+
+    async function saveDriveUrl() {
+      const val = document.getElementById('drive-url-input').value.trim();
+      const finalUrl = val || 'https://drive.google.com';
+      uiState.driveUrl = finalUrl;
+      document.getElementById('drive-open-external').href = finalUrl;
+      closeDriveModal();
+
+      if (currentUser && db) {
+        try {
+          await setDoc(getSettingsDoc(), { driveUrl: finalUrl }, { merge: true });
+          showToast('Link Drive Arsitek tersimpan untuk seluruh tim');
+        } catch (err) {
+          showToast('Gagal menyimpan Link Drive');
+        }
+      }
+    }
+
+    function openResetModal() {
+      document.getElementById('reset-modal').classList.remove('hidden');
+    }
+
+    function closeResetModal() {
+      document.getElementById('reset-modal').classList.add('hidden');
+    }
+
+    async function confirmResetData() {
+      closeResetModal();
+      if (!currentUser || !db) return;
+
+      try {
+        const [projSnap, memSnap] = await Promise.all([
+          getDocs(getProjectsCol()),
+          getDocs(getMembersCol())
+        ]);
+
+        const batch = writeBatch(db);
+        projSnap.forEach(d => batch.delete(d.ref));
+        memSnap.forEach(d => batch.delete(d.ref));
+
+        INITIAL_TEAM_MEMBERS.forEach((m, idx) => {
+          batch.set(doc(getMembersCol(), m.seedId), {
+            name: m.name,
+            role: m.role,
+            color: m.color,
+            contact: m.contact || '',
+            createdAt: 1700000000000 + idx
+          });
+        });
+
+        INITIAL_PROJECTS.forEach((p) => {
+          const { seedId, ...data } = p;
+          batch.set(doc(getProjectsCol(), seedId), data);
+        });
+
+        await batch.commit();
+        resetFilters();
+        showToast('Data tim dan proyek dipulihkan ke template awal');
+      } catch (err) {
+        console.error('Reset error:', err);
+        showToast('Gagal mereset data');
+      }
+    }
+
+    function exportCSV() {
+      const headers = ['Board', 'Project', 'Architect/Arsitek', 'Estimator', 'Marketing', 'Time/Timeline/Date', 'Deadline', 'Status', 'Note'];
+      const rows = [headers];
+
+      SECTION_CONFIGS.forEach(sec => {
+        uiState.projects
+          .filter(r => r.sectionId === sec.id)
+          .forEach(r => {
+            rows.push([
+              sec.title,
+              r.project || '',
+              r.architect || r.arsitek || '',
+              r.estimator || '',
+              r.marketing || '',
+              r.time || r.timeline || r.date || '',
+              r.deadline || '',
+              r.status || '',
+              r.note || ''
+            ]);
+          });
+      });
+
+      const csvContent = rows
+        .map(row => row.map(cell => `"${String(cell).replace(/"/g, '""')}"`).join(','))
+        .join('\n');
+
+      const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = 'Daily_Project_Monitoring_Paritama.csv';
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+      showToast('CSV berhasil diunduh');
+    }
+
+    /*************************************************************************
+     * 13. EXPOSE MODULE HANDLERS TO WINDOW & INITIALIZE
+     *************************************************************************/
+    Object.assign(window, {
+      setWorkspaceMode,
+      toggleWorkspaceMode,
+      toggleTheme,
+      exportCSV,
+      openResetModal,
+      closeResetModal,
+      confirmResetData,
+      openDriveModal,
+      closeDriveModal,
+      saveDriveUrl,
+      applyMetricFilter,
+      handleFilterChange,
+      clearSearch,
+      resetFilters,
+      setGlobalView,
+      toggleSectionCollapse,
+      toggleSectionSort,
+      setSectionView,
+      addNewRow,
+      addNewRowWithStatus,
+      startInlineTextEdit,
+      openDrawer,
+      closeDrawer,
+      updateDrawerField,
+      transferProjectToBoard,
+      handleDrawerDeleteClick,
+      openPersonPopover,
+      togglePopoverShowAllMembers,
+      filterPopoverMembers,
+      selectRowPerson,
+      openStatusPopover,
+      selectRowStatus,
+      openDatePopover,
+      applyDateValue,
+      handleCardDragStart,
+      handleCardDrop,
+      reopenDoneProject,
+      openMembersModal,
+      closeMembersModal,
+      selectMemberSwatch,
+      updateMemberFormPreview,
+      resetMemberForm,
+      startEditMember,
+      handleMemberFormSubmit,
+      setMembersModalRoleFilter,
+      handleDeleteMemberClick,
+      openAuthModal,
+      closeAuthModal,
+      signInWithGoogleAccount,
+      switchToAnonymousQuickAccess,
+      copyCurrentUserId
+    });
+
+    document.addEventListener('click', (e) => {
+      const pop = document.getElementById('floating-popover');
+      if (pop && !pop.classList.contains('hidden') && !pop.contains(e.target)) {
+        closePopover();
+      }
+    });
+
+    document.addEventListener('keydown', (e) => {
+      if (e.key === 'Escape') {
+        closePopover();
+        closeDriveModal();
+        closeResetModal();
+        closeMembersModal();
+        closeAuthModal();
+        if (activeDrawerRowId) closeDrawer();
+      }
+    });
+
+    // Boot Firebase & Real-Time Workspace
+    initFirebaseWorkspace();
+  </script>
+</body>
+</html>
